@@ -57,7 +57,7 @@ header { display:flex; align-items:baseline; justify-content:space-between; gap:
 .canc-t { color:#ff8a80; font-size:12.5px; font-weight:600; margin-top:9px; line-height:1.45; }
 .canc-t span { color:#888; font-weight:400; }
 .afer { margin-top:10px; padding-top:9px; border-top:1px solid #333; font-size:12px; color:#bbb; line-height:1.55; }
-.afer b { color:#7fd39b; }
+.afer b { color:#fff; border-bottom:1px solid #666; }
 .afer .dif { color:#fff; font-weight:600; }
 .afer .aguarda { color:#888; font-style:italic; }
 
@@ -157,7 +157,7 @@ footer b { color:#777; }
     <b>De onde vem:</b> 99Food ao vivo (chega no segundo em que o pedido entra). O iFood não entra aqui — não existe fonte ao vivo dele hoje.<br>
     <b>Faturamento</b> = base de cálculo da comissão: o que foi vendido, já sem o desconto que a loja banca. É a mesma régua do royalty. Não é o preço cheio do cardápio.<br>
     <b>Repasse aprox.</b> = quanto disso vira dinheiro, <b>já somando o vale-refeição</b> (que não passa pelo depósito da 99: vem direto do operador do vale). É <b>estimativa</b>, calculada com a forma de pagamento de cada pedido; erra cerca de 3% num dia e 1% numa semana. O número fechado é sempre o do financeiro da 99, que sai 2 a 3 dias depois.<br>
-    <b>Dia começa às 08h:</b> o que vende de madrugada conta na noite anterior. Pedido cancelado não entra no faturamento.<br>
+    <b>Dia começa às 08h:</b> o que vende de madrugada conta na noite anterior. Pedido cancelado sai do faturamento — mas no cancelamento <i>parcial</i> a parte entregue continua contando, por isso o valor cancelado é um teto, não uma perda fechada.<br>
     <b>Ontem, Semana passada e Mês passado</b> já fecharam: quando o financeiro da 99 chega, o painel mostra o valor real ao lado da estimativa.<br>
     <button class="sair" onclick="sair()">sair deste aparelho</button>
   </footer>
@@ -252,9 +252,11 @@ function blocoAfer(d){
   const est = d.rede.receb;
   const dif = (est === null || !a.recebido) ? null : 100*(est/a.recebido - 1);
   return '<div class="afer">O financeiro da 99 já fechou este período: <b>' + brl(a.recebido) + '</b> em ' +
-    a.pedidos.toLocaleString("pt-BR") + ' pedidos' +
+    a.pedidos.toLocaleString("pt-BR") + ' pedidos <span class="aguarda">(contagem do financeiro, ' +
+    'que pode diferir em alguns pedidos da contagem ao vivo)</span>' +
     (dif === null ? '' : ' · a estimativa acima ficou <span class="dif">' +
-      (dif >= 0 ? '+' : '') + dif.toFixed(1).replace('.', ',') + '%</span>') +
+      Math.abs(dif).toFixed(1).replace('.', ',') + '% ' + (dif >= 0 ? 'acima' : 'abaixo') +
+      '</span> desse valor') +
     (a.parcial ? ' <span class="aguarda">⚠ ainda parcial: o financeiro só cobre até ' +
       a.coberturaAte.split('-').reverse().join('/') + '.</span>' : '') + '</div>';
 }
@@ -349,7 +351,7 @@ async function tick(doLogin){
     document.getElementById("rotulo").textContent =
       (d.periodo === "dia" ? "Hoje, " + d.rotulo : d.rotulo.charAt(0).toUpperCase() + d.rotulo.slice(1)) +
       (ms > 0 ? " · atualiza a cada " + (seg >= 60 ? Math.round(seg/60) + "min" : seg + "s")
-              : " · período encerrado");
+              : " · período encerrado") + " · só 99Food e balcão, o iFood não entra";
     document.getElementById("total").innerHTML = blocoTotal(d);
     // o card vai sempre: com uma loja só ele repete um pouco o bloco preto, mas é ele
     // que traz a quebra por MARCA, que é o conteúdo que o dono da loja quer ver
@@ -359,7 +361,7 @@ async function tick(doLogin){
       ? '<h3>' + (periodo === "dia" ? "Chegando agora" : "Últimos pedidos") + '</h3><div class="ult">' +
         d.ultimos.map(u => '<div class="l' + (u.canc ? ' riscado' : '') + '"><div>' + esc(u.marca) +
           '<div class="q">' + esc(u.h) + (d.lojas.length > 1 ? ' · ' + esc(u.loja) : '') + '</div></div>' +
-          '<div class="vv">' + brl(u.valor) + '<em>' + (u.canc ? 'cancelado' : repC(u.receb)) + '</em></div></div>').join("") +
+          '<div class="vv">' + brl(u.valor) + (u.canc ? '<em>cancelado</em>' : '') + '</div></div>').join("") +
         '</div>'
       : '';
   } catch(e) {
