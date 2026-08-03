@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pedidos ao vivo — Black Dog</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌭</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root { --lar:#FF6600; --preto:#111; --cinza:#777; --fundo:#f5f4f2; --card:#fff; --verde:#1b7f3b; }
+* { box-sizing:border-box; margin:0; }
+body { font-family:Poppins,sans-serif; background:var(--fundo); color:var(--preto); padding:22px 26px 60px; }
+header { display:flex; align-items:baseline; gap:16px; flex-wrap:wrap; margin-bottom:6px; }
+h1 { font-family:'Alfa Slab One',serif; font-size:26px; letter-spacing:.5px; }
+h1 span { color:var(--lar); }
+.vivo { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--cinza); }
+.dot { width:9px; height:9px; border-radius:50%; background:var(--lar); animation:p 1.6s infinite; }
+.dot.parado { animation:none; background:#bbb; }
+@keyframes p { 0%,100%{opacity:1} 50%{opacity:.25} }
+.sub { font-size:12px; color:var(--cinza); margin-bottom:14px; }
+.abas { display:inline-flex; gap:0; background:#e8e6e3; border-radius:10px; padding:3px; margin-bottom:18px; flex-wrap:wrap; }
+.abas button { border:0; background:transparent; font-family:Poppins,sans-serif; font-weight:600; font-size:13px; color:var(--cinza); padding:7px 15px; border-radius:8px; cursor:pointer; white-space:nowrap; }
+.abas button.on { background:var(--preto); color:#fff; }
+.abas .sep { width:1px; background:#d2cfca; margin:5px 4px; }
+#erro, #alerta { display:none; padding:8px 14px; border-radius:8px; font-size:13px; margin-bottom:14px; }
+#erro { background:#b3261e; color:#fff; }
+#alerta { background:#ffe8b3; color:#6b4e00; font-weight:600; }
+
+/* bloco preto do topo: TOTAL grande + os dois canais embaixo */
+.total { background:var(--preto); color:#fff; border-radius:14px; padding:18px 24px 14px; margin-bottom:20px; overflow-x:auto; }
+.total table { width:100%; min-width:720px; max-width:1040px; border-collapse:collapse; }
+.total td { padding:2px 0; }
+.total td.r { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; padding-left:14px; }
+/* cinco números em Alfa Slab não cabem em tamanho fixo: 5 x "R$ 194.433" a 32px passa
+   de 1000px só de dígito. clamp escala com a janela em vez de cortar a última coluna. */
+.total tr.big td { font-family:'Alfa Slab One',serif; font-size:clamp(15px, 1.75vw, 24px); line-height:1.15; padding-bottom:2px; }
+.total tr.big td.lbl { font-size:15px; color:#bbb; font-family:Poppins; font-weight:600; }
+.total tr.big td.gmv { color:var(--lar); }
+.total tr.big td.rep { color:#7fd39b; }
+/* preço cheio é CONTEXTO, não o número operativo: cinza, para o faturamento (laranja, base
+   do royalty) continuar sendo o protagonista da linha e ninguém confundir os dois. */
+.total tr.big td.menu, .total tr.ch td.menu { color:#8d8d8d; }
+.total tr.ch td { font-size:14px; color:#ccc; font-weight:600; padding-top:5px; border-top:1px solid #333; }
+.total tr.ch td.lbl { color:#888; font-weight:400; }
+.total .cab td { font-size:10px; color:#777; text-transform:uppercase; letter-spacing:.6px; padding-bottom:4px; }
+.canc { color:#ff8a80; font-size:13px; font-weight:600; margin-top:10px; }
+.menuch { color:#999; font-size:12px; margin-top:6px; }
+.ress { color:#888; font-weight:400; font-size:11px; }
+.afer { margin-top:10px; padding-top:8px; border-top:1px solid #333; font-size:12px; color:#ccc; }
+.afer b { color:#7fd39b; }
+.afer .dif { color:#fff; font-weight:600; }
+.afer .aguarda { color:#999; font-style:italic; font-weight:400; }
+
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(530px,1fr)); gap:14px; }
+.card { background:var(--card); border-radius:12px; padding:14px 18px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+.card.semcad { outline:2px solid #e0a800; }
+.card h2 { font-family:'Alfa Slab One',serif; font-size:17px; display:flex; justify-content:space-between; align-items:baseline; }
+.card h2 .v { color:var(--lar); font-size:16px; white-space:nowrap; }
+.card h2 .v em { color:var(--verde); font-style:normal; font-size:14px; }
+.card .tot { font-size:12px; color:var(--cinza); margin:2px 0 8px; }
+.aviso { color:#8a6d00; font-size:11px; font-weight:600; margin-bottom:6px; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+td { padding:3px 0; }
+/* nowrap + folga: sem isso "R$ 24.704" quebra em duas linhas assim que a semana passa
+   de 5 dígitos, e o cabeçalho cola ("PEDIDOSFATURAMENTO"). */
+td.r { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; padding-left:10px; }
+td.nm { min-width:96px; }
+td.rep { color:var(--verde); }
+/* mesma régua do bloco preto: preço cheio é contexto, faturamento é o número operativo */
+td.menu { color:#9a9a9a; }
+tr.cab td { font-size:9px; color:#aaa; text-transform:uppercase; letter-spacing:.5px; padding-bottom:2px; }
+/* nota do canal errado / taxa faltando: linha própria, para não empurrar as colunas */
+tr.nota td { font-size:10px; color:var(--cinza); padding:0 0 4px 14px; font-style:italic; }
+tr.canal td { font-weight:700; border-top:1px solid #eee; }
+tr.marca td { color:var(--cinza); font-size:12px; border:0; }
+tr.marca td.nm { padding-left:14px; }
+tr.marca td.rep { color:#7aa98a; }
+tr.off td { color:#aaa; font-size:12px; font-style:italic; border-top:1px solid #eee; }
+tr.tot-row td { border-top:2px solid #ccc; font-weight:700; padding-top:5px; }
+tr.tot-row td.lbl { font-family:'Alfa Slab One',serif; font-weight:400; font-size:13px; }
+.tk { color:var(--cinza); font-weight:400; }
+.badge { color:#b3261e; font-weight:600; font-size:11px; }
+#ult { margin-top:26px; }
+#ult h3 { font-family:'Alfa Slab One',serif; font-size:15px; margin-bottom:8px; }
+#ult table { max-width:720px; background:var(--card); border-radius:10px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+#ult td { padding:6px 12px; border-top:1px solid #f0f0f0; }
+.riscado { text-decoration:line-through; color:var(--cinza); }
+
+/* cancelamentos: dossiê por pedido cancelado */
+#canc { margin-top:26px; }
+#canc h3 { font-family:'Alfa Slab One',serif; font-size:15px; margin-bottom:2px; }
+#canc .nota { font-size:11px; color:var(--cinza); margin-bottom:8px; }
+#canc .lista { display:grid; grid-template-columns:repeat(auto-fill,minmax(400px,1fr)); gap:10px; }
+.cx { background:var(--card); border-radius:10px; padding:11px 14px; box-shadow:0 1px 3px rgba(0,0,0,.08); border-left:4px solid #b3261e; }
+.cx .top { display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+.cx .loja { font-weight:700; font-size:13px; }
+.cx .num { color:var(--cinza); font-weight:400; font-size:11px; }
+.cx .val { color:#b3261e; font-weight:700; font-size:14px; font-variant-numeric:tabular-nums; }
+.cx .it { font-size:12px; color:#444; margin:4px 0 6px; line-height:1.35; }
+.cx .meta { font-size:11px; color:var(--cinza); display:flex; flex-wrap:wrap; gap:4px 12px; }
+.cx .mot { margin-top:6px; font-size:12px; font-weight:600; }
+.cx .mot.tem { color:var(--preto); }
+.cx .mot.aguarda { color:#8a6d00; font-weight:400; font-style:italic; }
+.cx .rapido { color:#b3261e; font-weight:600; }
+footer { margin-top:30px; font-size:11px; color:var(--cinza); max-width:820px; line-height:1.6; }
+/* ---- tela de senha (só aparece na versão hospedada, onde TOKEN é vazio) ---- */
+#login { display:none; position:fixed; inset:0; background:var(--fundo); z-index:50;
+         flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:24px; }
+#login h1 { font-size:22px; text-align:center; }
+#login .cx { display:flex; flex-direction:column; gap:10px; width:100%; max-width:320px; }
+#login input { font-family:Poppins,sans-serif; font-size:16px; padding:13px 15px; border:2px solid #ddd;
+               border-radius:10px; background:#fff; width:100%; }
+#login input:focus { outline:none; border-color:var(--lar); }
+#login button { font-family:Poppins,sans-serif; font-weight:700; font-size:15px; padding:13px;
+                border:0; border-radius:10px; background:var(--preto); color:#fff; cursor:pointer; }
+#login-erro { color:#b3261e; font-size:13px; font-weight:600; min-height:18px; text-align:center; }
+#login .obs { font-size:11px; color:var(--cinza); text-align:center; max-width:320px; line-height:1.5; }
+
+/* ---- telas estreitas (celular): a tabela rola na horizontal em vez de espremer ----
+   São 6 colunas, e espremer transforma "R$ 24.704" em duas linhas ou corta a última
+   coluna sem avisar. Rolar na horizontal preserva todas as colunas legíveis. */
+@media (max-width: 640px) {
+  body { padding:14px 12px 40px; }
+  h1 { font-size:20px; }
+  .grid { grid-template-columns:1fr; }
+  .card { padding:12px 12px; overflow-x:auto; }
+  .card table { min-width:430px; }
+  .total { padding:14px 14px 12px; }
+  .total table { min-width:560px; }
+  #ult table { min-width:520px; }
+  #ult { overflow-x:auto; }
+  footer { font-size:10px; }
+}
+</style></head><body>
+<div id="login">
+  <h1>Pedidos <span>ao vivo</span> — Black Dog</h1>
+  <div class="cx">
+    <input id="senha-campo" type="password" inputmode="text" autocomplete="current-password"
+           placeholder="senha" autocapitalize="none" autocorrect="off" spellcheck="false">
+    <button id="senha-ok" type="button">Entrar</button>
+  </div>
+  <div id="login-erro"></div>
+  <div class="obs">A senha fica guardada só neste aparelho. Dez erros seguidos bloqueiam por 15 minutos.</div>
+</div>
+<div id="corpo" style="display:none">
+<header><h1>Pedidos <span>ao vivo</span> — Black Dog</h1>
+<span class="vivo"><span class="dot" id="dot"></span> <span id="st">carregando…</span></span></header>
+<div class="abas">
+  <button id="b-dia" class="on" onclick="setPeriodo('dia')">Hoje</button>
+  <button id="b-semana" onclick="setPeriodo('semana')">Semana</button>
+  <button id="b-mes" onclick="setPeriodo('mes')">Mês</button>
+  <span class="sep"></span>
+  <button id="b-dia_ant" onclick="setPeriodo('dia_ant')">Ontem</button>
+  <button id="b-semana_ant" onclick="setPeriodo('semana_ant')">Semana passada</button>
+  <button id="b-mes_ant" onclick="setPeriodo('mes_ant')">Mês passado</button>
+</div>
+<div class="sub" id="rotulo"></div>
+<div id="alerta"></div>
+<div id="erro"></div>
+<div class="total" id="total"></div>
+<div class="grid" id="lojas"></div>
+<div id="canc"></div>
+<div id="ult"></div>
+<footer>
+<b>Canais:</b> 99Food (webhook ao vivo) + Balcão (PDV/SAG, atualiza a cada 5 min). <b>O iFood NÃO entra neste painel</b> — não existe fonte ao vivo dele hoje, então o Total é 99 + Balcão, não o faturamento da loja.<br>
+<b>Faturamento:</b> visão operacional, pode divergir do financeiro (o da 99 fecha D+2/D+3). <b>R$ da 99 = base de cálculo de comissão</b> (menu cheio, mais a taxa de pedido mínimo, menos o desconto que a LOJA banca; é a mesma base do royalty e do "faturamento realizado"). Conferida contra o financeiro da 99 em <b>todos os pedidos de 1 a 30 de julho, diferença zero</b>. <b>R$ do balcão</b> = o que foi vendido no PDV, já descontado o desconto dado no item, antes de taxas de cartão — a mesma régua de royalty do balcão. <b>Entra também a venda de balcão que o atendente fechou como delivery no PDV</b> (erro de fechamento, decisão do Marcos em 01/08); quando houver, o card mostra quanto foi. Pedido de app não cai aqui, então não conta duas vezes. Ticket médio calculado sobre o faturamento. Dia operacional com corte às 08h: a madrugada conta na noite anterior. Pedidos e R$ excluem cancelados; os cancelados da 99 aparecem à parte.<br>
+<b>Preço cheio:</b> o preço de <b>tabela</b> dos itens, antes de qualquer desconto que a casa dê — é o que a venda teria dado no preço do cardápio. A distância entre ele e o faturamento é o desconto que <b>a loja banca</b>. Na 99 é o valor do pedido no cardápio (não inclui a taxa de pedido mínimo, que é tarifa e não item). No balcão é preço × quantidade de cada item, o que pega tanto o desconto lançado como desconto quanto o <b>preço editado na hora da venda</b>, que não aparece em lugar nenhum do PDV como desconto. <b>Preço cheio não é faturamento</b>: quem manda em royalty, comissão e imposto é a coluna do faturamento, ao lado. O preço cheio serve para responder quanto a loja está abrindo mão, por marca e por canal — cor cinza na tela justamente para não ser confundido com o número que vale.<br>
+<b>Repasse aprox.:</b> o total que entra, <b>já somando o vale-refeição</b>. Na 99 ele tem duas partes: o <b>depósito da 99</b> (tira da base a taxa de pagamento, o custo de entrega e o frete que a loja banca, e devolve o subsídio de frete) mais o <b>vale-refeição</b>, que não passa pelo depósito — vem direto do operador do vale. A conta usa a forma de pagamento de cada pedido, que é o que mais pesa: pagando com vale, a 99 quase não deposita, mas o dinheiro entra igual. É <b>estimativa</b>: os percentuais saem do próprio financeiro da 99 numa janela móvel de 28 dias e se atualizam sozinhos. Erro medido contra o financeiro real de julho, sempre estimando um dia só com os 28 dias <i>anteriores</i> a ele (177 combinações loja×dia): <b>2,8% no dia de uma loja</b> (9 em cada 10 dias abaixo de 4,5%), <b>0,8% na semana de uma loja</b>, <b>0,1% no mês da rede</b>. <b>No balcão</b> é o bruto menos uma taxa média de cartão configurada por loja (hoje 3%): é <b>premissa</b>, não medição, porque o PDV não registra a forma de pagamento — e ali o vale já está dentro do bruto.<br>
+<b>Abas de período passado</b> (Ontem, Semana passada, Mês passado): a janela já fechou, então o painel busca o financeiro de verdade da 99 e mostra <b>ao lado</b> quanto ele fechou e o quanto a estimativa errou. Elas não se atualizam sozinhas — o número não muda mais. O financeiro da 99 fecha com 2 a 3 dias de atraso, então "Ontem" quase sempre ainda não tem aferição.<br>
+<b>O que este painel NÃO mostra:</b> o frete grátis bancado pela loja não aparece no faturamento (some da base junto com o desconto de comida) — mas está descontado no repasse. Para a conta fechada, vale o financeiro.<br>
+<b>Cancelamentos:</b> hora, valor, itens, quanto tempo depois de aceitar e se já tinha entregador saem do webhook, ao vivo. O <b>motivo escrito</b> ("item esgotado", "outro caso") NÃO tem fonte ao vivo: a API da 99 não devolve razão de cancelamento e o código do financeiro só diz quem cancelou, não por quê. O texto só existe no export do portal e entra sozinho quando ele chega — o export é manual, então na prática costuma atrasar bem mais que 2 dias. Pra saber o motivo na hora, abrir o portal em Pedidos, Histórico de pedidos, aba Cancelado, e clicar no número do pedido.<br>
+<b>Balcão:</b> chega pelo PC do Marcos via ZeroTier. Com o Mac desligado o número congela, e a linha do balcão avisa há quantos minutos está parada. Lojas sem PDV integrado aparecem como "não integrado".
+</footer>
+</div>
+<script>
+// DOIS MODOS DE ENTRADA no mesmo arquivo, para não existirem duas versões da página
+// divergindo em silêncio:
+//   TOKEN preenchido -> arquivo LOCAL do Mac. Entra direto, sem senha.
+//   TOKEN vazio      -> versão HOSPEDADA (GitHub Pages). Pede senha e usa o slug abaixo.
+// A versão hospedada é gerada por publica_painel_rede.py, que zera o TOKEN e preenche o
+// SLUG — e ABORTA se o token sobreviver no arquivo de saída, porque o destino é um
+// repositório PÚBLICO e o token é acesso irrestrito ao financeiro da rede.
+const ENDPOINT = "https://wdcpyqmxveciqwrrmftf.supabase.co/functions/v1/painel-99";
+const TOKEN = "";
+const SLUG = "rede";
+const PERIODOS = ["dia","semana","mes","dia_ant","semana_ant","mes_ant"];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const brl = v => "R$ " + v.toLocaleString("pt-BR",{minimumFractionDigits:2, maximumFractionDigits:2});
+const brlK = v => "R$ " + v.toLocaleString("pt-BR",{minimumFractionDigits:0, maximumFractionDigits:0});
+// repasse não estimado vira travessão, nunca zero: "R$ 0" e "não sei" são decisões opostas
+const rec = v => (v === null || v === undefined) ? "—" : brlK(v);
+// na lista pedido a pedido os dois valores saem com centavos: "R$ 62,95 → R$ 50" fica
+// parecendo arredondamento errado quando é só formatação diferente.
+const recC = v => (v === null || v === undefined) ? "—" : brl(v);
+const tk = (gmv, ped) => brl(ped ? gmv/ped : 0);   // ticket médio com guarda de divisão por zero
+// Períodos passados NÃO se atualizam: a janela fechou, o número não muda, e o mês
+// passado custa ~10s de varredura. Zero = sem timer.
+const INTERVALO = { dia: 30000, semana: 60000, mes: 180000, dia_ant: 0, semana_ant: 0, mes_ant: 0 };
+let carregou = false;
+let periodo = "dia";
+let reqId = 0;   // sequência: só o fetch mais recente pode escrever na tela (cobre troca de aba E ticks concorrentes)
+let timer = null;
+let tentativas = 0; // retry só das abas SEM timer; zera a cada troca de período
+let senha = "";     // só no modo hospedado; fica neste aparelho, nunca no arquivo
+const CHAVE = "painelbd_" + SLUG;
+// A senha do grupo vai em HEADER, nunca na query string: URL entra em log de servidor,
+// histórico do navegador e no Referer de qualquer link que a página abrir.
+function pedidoAuth(){
+  return TOKEN
+    ? { qs: "?t=" + encodeURIComponent(TOKEN), headers: {} }
+    : { qs: "?g=" + encodeURIComponent(SLUG), headers: { "x-painel-senha": senha } };
+}
+function mostraLogin(msg){
+  senha = "";
+  try { localStorage.removeItem(CHAVE); } catch(e) {}
+  if (timer) { clearInterval(timer); timer = null; }
+  document.getElementById("login").style.display = "flex";
+  document.getElementById("login-erro").textContent = msg || "";
+  document.getElementById("corpo").style.display = "none";
+  const i = document.getElementById("senha-campo");
+  i.value = ""; setTimeout(() => i.focus(), 60);
+}
+function escondeLogin(){
+  document.getElementById("login").style.display = "none";
+  document.getElementById("corpo").style.display = "";
+}
+function entrar(){
+  const v = document.getElementById("senha-campo").value.trim();
+  if (!v) return;
+  senha = v;
+  carregou = false;
+  document.getElementById("login-erro").textContent = "entrando…";
+  tick();
+}
+function limpaTela(){
+  for (const id of ["total","lojas","canc","ult"]) document.getElementById(id).innerHTML = "";
+  document.getElementById("rotulo").textContent = ""; // não deixa o rótulo do período anterior durante o load
+  document.getElementById("alerta").style.display = "none";
+}
+function reagenda(){
+  if (timer) { clearInterval(timer); timer = null; }
+  const ms = INTERVALO[periodo];
+  if (ms > 0) timer = setInterval(tick, ms);
+  document.getElementById("dot").className = ms > 0 ? "dot" : "dot parado";
+}
+function setPeriodo(p){
+  if (p === periodo) return;
+  periodo = p;
+  for (const q of PERIODOS) document.getElementById("b-" + q).className = (q === p ? "on" : "");
+  carregou = false;
+  tentativas = 0;
+  document.getElementById("erro").style.display = "none";
+  document.getElementById("st").textContent = "carregando…";
+  limpaTela(); // não deixa número do período anterior na tela durante o novo fetch
+  reagenda();
+  tick();
+}
+// linha de canal do card: rótulo + pedidos + preço cheio + faturamento + repasse + ticket
+// `menu` undefined (linha que não tem preço cheio próprio) vira travessão, nunca zero.
+function linha(cls, nome, ped, menu, gmv, receb, extra){
+  return '<tr class="' + cls + '"><td class="nm">' + nome + (extra || "") + '</td>' +
+         '<td class="r">' + ped + ' ped</td>' +
+         '<td class="r menu">' + (menu === null || menu === undefined ? "—" : brlK(menu)) + '</td>' +
+         '<td class="r">' + brlK(gmv) + '</td>' +
+         '<td class="r rep">' + rec(receb) + '</td>' +
+         '<td class="r tk">' + tk(gmv, ped) + '</td></tr>';
+}
+// quanto do preço de tabela a casa abriu mão. Só sai quando há o que mostrar: preço cheio
+// igual ao faturamento (balcão sem desconto no dia) não vira "0%" pendurado na tela.
+function descPct(menu, gmv){
+  if (!menu || !gmv || menu <= gmv) return '';
+  return ' · desconto ' + Math.round(100*(1 - gmv/menu)) + '%';
+}
+// linha de conferência das abas fechadas: a estimativa contra o que a 99 fechou de verdade
+function blocoAfer(d){
+  if (!d.fechado) return '';
+  const a = d.aferido;
+  if (!a) return '<div class="afer"><span class="aguarda">O financeiro da 99 ainda não fechou esta janela ' +
+    '(ele sai com 2 a 3 dias de atraso) — por enquanto só a estimativa.</span></div>';
+  const est = d.rede.receb;
+  const dif = (est === null || !a.recebido) ? null : 100*(est/a.recebido - 1);
+  return '<div class="afer">Financeiro da 99 já fechou: <b>' + brl(a.recebido) + '</b> recebido em ' +
+    a.pedidos.toLocaleString("pt-BR") + ' pedidos <span class="ress">(' + brlK(a.settlement) +
+    ' depositados + ' + brlK(a.vr) + ' em vale)</span>' +
+    (dif === null ? '' : ' · a estimativa acima ficou <span class="dif">' +
+      (dif >= 0 ? '+' : '') + dif.toFixed(1).replace('.', ',') + '%</span>') +
+    (a.parcial ? ' <span class="aguarda">⚠ parcial: o financeiro só cobre até ' +
+      a.coberturaAte.split('-').reverse().join('/') + ', então o número real está incompleto (não é queda de venda).</span>' : '') +
+    '</div>';
+}
+function bloco(d){
+  const dep = d.rede.rep, vale = d.rede.vr, bal = d.redeBalcao.receb;
+  return '<table>' +
+    '<tr class="cab"><td></td><td class="r">pedidos</td><td class="r">preço cheio</td><td class="r">faturamento</td><td class="r">repasse aprox.</td><td class="r">ticket médio</td></tr>' +
+    '<tr class="big"><td class="lbl">TOTAL</td><td class="r">' + d.redeTotal.ped + '</td>' +
+      '<td class="r menu">' + brlK(d.redeTotal.menu) + '</td>' +
+      '<td class="r gmv">' + brlK(d.redeTotal.gmv) + '</td><td class="r rep">' + rec(d.redeTotal.receb) + '</td>' +
+      '<td class="r" style="font-size:clamp(13px,1.35vw,18px)">' + tk(d.redeTotal.gmv, d.redeTotal.ped) + '</td></tr>' +
+    '<tr class="ch"><td class="lbl">99Food</td><td class="r">' + d.rede.ped + '</td>' +
+      '<td class="r menu">' + brlK(d.rede.menu) + '</td>' +
+      '<td class="r">' + brlK(d.rede.gmv) + '</td><td class="r">' + rec(d.rede.receb) + '</td>' +
+      '<td class="r">' + tk(d.rede.gmv, d.rede.ped) + '</td></tr>' +
+    '<tr class="ch"><td class="lbl">Balcão</td><td class="r">' + d.redeBalcao.ped + '</td>' +
+      '<td class="r menu">' + brlK(d.redeBalcao.menu) + '</td>' +
+      '<td class="r">' + brlK(d.redeBalcao.gmv) + '</td><td class="r">' + rec(d.redeBalcao.receb) + '</td>' +
+      '<td class="r">' + tk(d.redeBalcao.gmv, d.redeBalcao.ped) + '</td></tr>' +
+    '</table>' +
+    // de onde vem o repasse: as três parcelas, para o vale não parecer mágica
+    (d.redeTotal.receb !== null
+      ? '<div class="menuch">repasse = <b>' + brlK(dep === null ? 0 : dep) + '</b> depositados pela 99 + <b>' +
+        brlK(vale === null ? 0 : vale) + '</b> em vale-refeição (cai por fora, direto do operador) + <b>' +
+        brlK(bal === null ? 0 : bal) + '</b> do balcão' +
+        (d.redeTotal.gmv > 0 ? ' · <b>' + Math.round(100*d.redeTotal.receb/d.redeTotal.gmv) + '%</b> do faturamento' : '') +
+        '</div>' : '') +
+    (d.rede.canc ? '<div class="canc">' + d.rede.canc + ' cancelado' + (d.rede.canc>1?'s':'') + ' na 99 — até ' + brlK(d.rede.cancVal) +
+        '<span class="ress"> (teto: em cancelamento parcial parte disso faturou; o valor fechado sai no financeiro em ~3 dias)</span></div>' : '') +
+    // a coluna mostra os dois números; esta linha diz o que a DISTÂNCIA entre eles significa,
+    // que é o que o preço cheio existe para responder.
+    (d.rede.menu > 0 && d.rede.menu > d.rede.gmv
+      ? '<div class="menuch">do preço cheio ao faturamento a casa abriu mão de <b>' +
+        Math.round(100*(1 - d.rede.gmv/d.rede.menu)) + '%</b> na 99 — é o desconto <b>em comida</b> que a loja banca' +
+        '<span class="ress"> (o frete grátis bancado pela loja não entra nesta conta, mas está descontado no repasse)</span></div>' : '') +
+    (d.redeBalcao.menu > d.redeBalcao.gmv
+      ? '<div class="menuch">no balcão a diferença é <b>' + brlK(d.redeBalcao.menu - d.redeBalcao.gmv) +
+        '</b><span class="ress"> — desconto dado no item mais preço editado na hora da venda</span></div>' : '') +
+    blocoAfer(d);
+}
+function card(L, falhouBalcao){
+  const b = L.balcao;
+  const atraso = b && !b.ok ? ' <span class="badge">⚠ parado há ' + b.atrasoMin + 'min</span>' : '';
+  // venda de balcão que o PDV registrou como delivery: entra no número, mas fica visível.
+  const ce = b && b.ce && b.ce.gmv > 0
+    ? 'inclui ' + brlK(b.ce.gmv) + ' em ' + b.ce.ped + ' venda' + (b.ce.ped > 1 ? 's' : '') + ' fechada' + (b.ce.ped > 1 ? 's' : '') + ' como delivery'
+    : '';
+  const semTaxa = b && b.pctTaxa === null ? 'taxa de cartão não configurada — sem repasse estimado' : '';
+  // nota do balcão em LINHA PRÓPRIA: dentro da célula do nome ela empurrava as colunas
+  // numéricas e quebrava "R$ 24.704" no meio (visto na aba Semana).
+  const notaBal = [ce, semTaxa].filter(Boolean).join(' · ');
+  const linhaNota = notaBal ? '<tr class="nota"><td colspan="6">' + notaBal + '</td></tr>' : '';
+  return '<div class="card' + (L.semCad ? ' semcad' : '') + '">' +
+    '<h2>' + esc(L.nome) + '<span class="v">' + brlK(L.total.gmv) +
+      (L.total.receb === null ? '' : ' <em>→ ' + brlK(L.total.receb) + '</em>') + '</span></h2>' +
+    (L.semCad ? '<div class="aviso">⚠ sem cadastro no de-para — avisar Craudio</div>' : '') +
+    '<div class="tot">' + L.total.ped + ' pedidos · ticket ' + tk(L.total.gmv, L.total.ped) +
+      descPct(L.total.menu, L.total.gmv) +
+      (L.n9.canc ? ' · <span class="badge">' + L.n9.canc + ' canc na 99</span>' : '') + '</div>' +
+    '<table>' +
+      '<tr class="cab"><td></td><td class="r">pedidos</td><td class="r">preço cheio</td><td class="r">faturamento</td><td class="r">repasse</td><td class="r">ticket</td></tr>' +
+      linha("canal", "99Food", L.n9.ped, L.n9.menu, L.n9.gmv, L.n9.receb) +
+      L.marcas.map(m => linha("marca", esc(m.nome), m.ped, m.menu, m.gmv, m.receb,
+          m.canc ? ' <span class="badge">+' + m.canc + 'c</span>' : '')).join("") +
+      (b ? linha("canal", "Balcão", b.ped, b.menu, b.gmv, b.receb, atraso) + linhaNota
+         : '<tr class="off"><td colspan="6">Balcão — ' +
+           // sem leitura do PDV (RPC ou heartbeat fora do ar) NÃO é o mesmo que loja sem PDV:
+           // dizer "não integrado" numa falha temporária é afirmar algo falso sobre a loja.
+           (falhouBalcao ? 'sem leitura agora (o painel não conseguiu falar com o PDV)'
+                         : 'PDV não integrado nesta loja') + '</td></tr>') +
+      '<tr class="tot-row"><td class="lbl">Total</td><td class="r">' + L.total.ped + ' ped</td>' +
+      '<td class="r menu">' + brlK(L.total.menu) + '</td>' +
+      '<td class="r">' + brlK(L.total.gmv) + '</td><td class="r rep">' + rec(L.total.receb) + '</td>' +
+      '<td class="r">' + tk(L.total.gmv, L.total.ped) + '</td></tr>' +
+    '</table></div>';
+}
+// caixinha de um cancelamento: o que dá pra saber AGORA, sem depender do motivo da 99
+function cxCanc(c){
+  // "aceitou e cancelou em seguida" é o padrão que mais pesa na nota — marcar em vermelho
+  const rapido = c.segAceite !== null && c.segAceite <= 180;
+  const aceite = c.segAceite === null
+    ? "cancelou sem aceitar"
+    : "cancelou " + (c.segAceite < 60 ? c.segAceite + "s" : Math.round(c.segAceite/60) + "min") + " depois de aceitar";
+  const mot = c.motivo
+    ? '<div class="mot tem">Motivo: ' + esc(c.motivo) + '</div>'
+    : '<div class="mot aguarda">Motivo ainda não publicado pela 99 — chega no export do portal</div>';
+  return '<div class="cx">' +
+    '<div class="top"><span class="loja">' + esc(c.loja) + ' · ' + esc(c.marca) +
+      ' <span class="num">#' + esc(c.num) + '</span></span>' +
+      '<span class="val">' + brl(c.valor) + '</span></div>' +
+    '<div class="it">' + esc(c.itens || "(sem itens no evento)") + '</div>' +
+    '<div class="meta"><span>' + esc(c.h) + ' → ' + esc(c.hCanc) + '</span>' +
+      '<span' + (rapido ? ' class="rapido"' : '') + '>' + aceite + '</span>' +
+      (c.entregador ? '<span>entregador já atribuído: ' + esc(c.entregador) + '</span>' : '') +
+    '</div>' + mot + '</div>';
+}
+function blocoCanc(d){
+  const lista = d.cancelamentos || [];
+  if (d.cancelamentosFalhou)
+    return '<h3>Cancelamentos</h3><div class="nota">Não consegui carregar a lista agora (o resto do painel continua válido).</div>';
+  const quando = { dia:"hoje", semana:"na semana", mes:"no mês",
+                   dia_ant:"no dia", semana_ant:"na semana", mes_ant:"no mês" }[d.periodo] || "";
+  // nas abas de mês o total vem, a lista não: montar o dossiê de um mês inteiro custava
+  // ~9s no servidor e fazia a aba falhar de forma intermitente. Dizer isso é melhor que
+  // sumir com o bloco e deixar parecer que não houve cancelamento.
+  if (d.cancelamentosOmitido) {
+    if (!d.cancelamentosTotal) return '';
+    return '<h3>Cancelamentos ' + quando + ' — ' + d.cancelamentosTotal + ' · até ' + brl(d.cancelamentosTotalValor) + '</h3>' +
+      '<div class="nota">No mês só o total. O detalhe pedido a pedido (hora, itens, tempo até cancelar, entregador) está nas abas de <b>dia</b> e <b>semana</b> — montar essa lista para um mês inteiro é pesado demais e fazia a aba falhar. Valor = faturamento, e é um <b>teto</b>: em cancelamento parcial parte do pedido faturou.</div>';
+  }
+  if (!lista.length) return '';
+  // total REAL do período (a lista vem limitada pelo teto da RPC). Antes o cabeçalho somava
+  // só os exibidos e contradizia o bloco preto — na aba Semana isso acontecia quase toda semana.
+  const total = (typeof d.cancelamentosTotal === "number") ? d.cancelamentosTotal : lista.length;
+  const totalVal = (typeof d.cancelamentosTotalValor === "number")
+    ? d.cancelamentosTotalValor : lista.reduce((t,c) => t + c.valor, 0);
+  return '<h3>Cancelamentos ' + quando + ' — ' + total + ' · até ' + brl(totalVal) + '</h3>' +
+    '<div class="nota">Só cancelamento de pedido que nasceu dentro do período. Valor = faturamento (base de cálculo), mesma régua do resto do painel, e é um <b>teto</b>: em cancelamento parcial parte do pedido faturou. O motivo escrito vem do portal da 99 com atraso; o resto é ao vivo.' +
+    (d.cancelamentosTruncado ? ' <b>Mostrando os ' + lista.length + ' mais recentes de ' + total + '.</b>' : '') + '</div>' +
+    '<div class="lista">' + lista.map(cxCanc).join("") + '</div>';
+}
+async function tick(){
+  const meu = ++reqId; // qualquer fetch anterior (aba trocada ou tick lento) fica obsoleto
+  const auth = pedidoAuth();
+  try {
+    const r = await fetch(ENDPOINT + auth.qs + "&periodo=" + periodo,
+                          {cache:"no-store", headers: auth.headers});
+    // 401 no modo hospedado é senha, não falha de rede: manda de volta pro login em vez de
+    // ficar piscando "reconectando…" para sempre com uma senha que não vale mais.
+    if (r.status === 401 && !TOKEN) {
+      if (meu !== reqId) return;
+      mostraLogin(carregou ? "Sua senha mudou ou expirou. Digite de novo."
+                           : "Senha incorreta.");
+      return;
+    }
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const d = await r.json();
+    if (meu !== reqId) return; // chegou tarde — um fetch mais novo já assumiu; descarta
+    if (d.error) throw new Error(d.error);
+    if (!TOKEN) { // entrou: guarda a senha NESTE aparelho e sai da tela de login
+      try { localStorage.setItem(CHAVE, senha); } catch(e) {}
+      escondeLogin();
+    }
+    carregou = true;
+    if (d.parcial) { // servidor sinalizou dado truncado por volume — não mostrar como completo
+      const el = document.getElementById("erro");
+      el.textContent = "Volume muito alto no período — os números podem estar incompletos.";
+      el.style.display = "block";
+    } else {
+      document.getElementById("erro").style.display = "none";
+    }
+    // avisos: nunca deixar número velho/ausente passar por leitura boa
+    const av = [];
+    if (d.balcaoFalhou) av.push("Balcão fora do ar (falha ao consultar o PDV) — os totais mostram só a 99.");
+    else if (d.balcaoAtrasado && d.balcaoAtrasado.length)
+      av.push("Balcão parado em: " + d.balcaoAtrasado.join(", ") + ". Confira se o Mac está ligado e o ZeroTier conectado.");
+    if (d.balcaoSemTaxa && d.balcaoSemTaxa.length)
+      av.push("Sem taxa de cartão configurada em: " + d.balcaoSemTaxa.join(", ") + " — o repasse do balcão fica em branco nessas lojas.");
+    const rc = d.repasseCoef || {};
+    if (rc.faltando) av.push("Repasse da 99 indisponível: os percentuais ainda não foram calculados a partir do financeiro.");
+    else if (rc.velho) av.push("Repasse da 99 usando percentuais de " + rc.idadeH + "h atrás (janela " + rc.janela + ") — o financeiro da 99 pode ter parado de chegar.");
+    const al = document.getElementById("alerta");
+    al.textContent = av.join(" ");
+    al.style.display = av.length ? "block" : "none";
+
+    document.getElementById("st").textContent = d.fechado ? "período fechado" : "atualizado " + d.atualizado;
+    const ms = INTERVALO[d.periodo] || 0;
+    const seg = Math.round(ms/1000);
+    document.getElementById("rotulo").textContent =
+      (d.periodo === "dia" ? "Dia operacional " + d.rotulo
+        : d.rotulo.charAt(0).toUpperCase() + d.rotulo.slice(1)) +
+      " · 99 + balcão · " + (ms > 0
+        ? "atualiza sozinho a cada " + (seg >= 60 ? Math.round(seg/60) + "min" : seg + "s")
+        : "período encerrado, não muda mais");
+    document.getElementById("total").innerHTML = bloco(d);
+    document.getElementById("lojas").innerHTML = d.lojas.map(L => card(L, d.balcaoFalhou)).join("");
+    document.getElementById("canc").innerHTML = blocoCanc(d);
+    document.getElementById("ult").innerHTML = d.ultimos.length ?
+      '<h3>' + (periodo === "dia" ? "Chegando agora (99)" : "Últimos pedidos (99)") + '</h3><table>' +
+      // duas colunas de dinheiro lado a lado sem rótulo viram adivinhação
+      '<tr class="cab"><td></td><td></td><td></td><td class="r">preço cheio</td>' +
+      '<td class="r">faturamento</td><td class="r">repasse</td></tr>' + d.ultimos.map(u =>
+        '<tr' + (u.canc ? ' class="riscado"' : '') + '><td>' + esc(u.h) + '</td><td>' + esc(u.loja) + '</td><td>' + esc(u.marca) +
+        // preço cheio pedido a pedido é EXATO (vem do payload), diferente do repasse, que é
+        // coeficiente agregado e por isso saiu daqui na RH de 02/08.
+        '</td><td class="r menu">' + brl(u.menu) + '</td>' +
+        '<td class="r">' + brl(u.valor) + '</td><td class="r rep">' + (u.canc ? 'cancelado' : recC(u.receb)) + '</td></tr>').join("") + '</table>' : '';
+  } catch(e) {
+    if (meu !== reqId) return; // erro de fetch obsoleto não deve sobrescrever a aba atual
+    // Nas abas de período fechado o timer está DESLIGADO (o número não muda), e sem isto
+    // um erro deixaria a tela parada no vermelho para sempre — foi o que aconteceu no
+    // Mês passado, que é a consulta mais pesada e a mais provável de falhar.
+    const podeTentar = INTERVALO[periodo] === 0 && tentativas < 2;
+    const el = document.getElementById("erro");
+    el.textContent = (carregou
+      ? "Sem atualização agora (" + e.message + ") — mostrando o último dado carregado."
+      : "Não consegui carregar (" + e.message + ").") +
+      (podeTentar ? " Tentando de novo…" : carregou ? "" : " Confira sua internet/o token.");
+    el.style.display = "block";
+    document.getElementById("st").textContent = podeTentar ? "tentando de novo…" : "reconectando…";
+    if (podeTentar) { tentativas++; setTimeout(tick, 3000); }
+  }
+}
+document.getElementById("senha-campo").addEventListener("keydown", e => { if (e.key === "Enter") entrar(); });
+document.getElementById("senha-ok").addEventListener("click", entrar);
+if (TOKEN) {                       // arquivo local: entra direto
+  escondeLogin();
+  tick(); reagenda();
+} else {                           // hospedado: senha já digitada neste aparelho, ou login
+  try { senha = localStorage.getItem(CHAVE) || ""; } catch(e) { senha = ""; }
+  if (senha) { escondeLogin(); tick(); reagenda(); } else { mostraLogin(); }
+}
+</script></body></html>
