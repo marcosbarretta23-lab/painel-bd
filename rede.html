@@ -445,6 +445,10 @@ async function tick(){
     const rc = d.repasseCoef || {};
     if (rc.faltando) av.push("Repasse da 99 indisponível: os percentuais ainda não foram calculados a partir do financeiro.");
     else if (rc.velho) av.push("Repasse da 99 usando percentuais de " + rc.idadeH + "h atrás (janela " + rc.janela + ") — o financeiro da 99 pode ter parado de chegar.");
+    // marcas === 0 não quebra nada, e é exatamente por isso que precisa de aviso: sem o
+    // subsídio de frete por marca o repasse do Burger's e do Rangos volta a sair baixo
+    // (uns 6 pontos no Burger's) e a tela pareceria normal.
+    if (!rc.faltando && rc.marcas === 0) av.push("Repasse da 99 sem o ajuste por marca — Burger's e Rangos aparecem abaixo do real. O cálculo por marca não foi gravado no último ciclo.");
     const al = document.getElementById("alerta");
     al.textContent = av.join(" ");
     al.style.display = av.length ? "block" : "none";
