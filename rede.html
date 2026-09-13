@@ -27,18 +27,28 @@ h1 span { color:var(--lar); }
 
 /* bloco preto do topo: TOTAL grande + os dois canais embaixo */
 .total { background:var(--preto); color:#fff; border-radius:14px; padding:18px 24px 14px; margin-bottom:20px; overflow-x:auto; }
-.total table { width:100%; min-width:720px; max-width:1040px; border-collapse:collapse; }
+.total table { width:100%; min-width:900px; max-width:1240px; border-collapse:collapse; }
 .total td { padding:2px 0; }
 .total td.r { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; padding-left:14px; }
-/* cinco números em Alfa Slab não cabem em tamanho fixo: 5 x "R$ 194.433" a 32px passa
-   de 1000px só de dígito. clamp escala com a janela em vez de cortar a última coluna. */
-.total tr.big td { font-family:'Alfa Slab One',serif; font-size:clamp(15px, 1.75vw, 24px); line-height:1.15; padding-bottom:2px; }
+/* sete números em Alfa Slab não cabem em tamanho fixo (v22: o repasse abriu em colunas).
+   clamp escala com a janela em vez de cortar a última coluna. */
+.total tr.big td { font-family:'Alfa Slab One',serif; font-size:clamp(13px, 1.5vw, 21px); line-height:1.15; padding-bottom:2px; }
 .total tr.big td.lbl { font-size:15px; color:#bbb; font-family:Poppins; font-weight:600; }
 .total tr.big td.gmv { color:var(--lar); }
 .total tr.big td.rep { color:#7fd39b; }
 /* preço cheio é CONTEXTO, não o número operativo: cinza, para o faturamento (laranja, base
    do royalty) continuar sendo o protagonista da linha e ninguém confundir os dois. */
 .total tr.big td.menu, .total tr.ch td.menu { color:#8d8d8d; }
+/* v22: o desconto bancado pela 99 é informação e NÃO entra na conta do repasse: azul, itálico
+   e sem sinal. As colunas que subtraem saem com "−". */
+.total tr.big td.d99, .total tr.ch td.d99 { color:#9cc0e6; font-style:italic; }
+.total tr.big td.neg { color:#f0f0f0; }
+.total tr.ch td.neg { color:#ccc; }
+.total .leg { color:#9cc0e6; font-size:11.5px; margin-top:6px; }
+/* v22 r3: no celular só a TABELA rola de lado; conta, descontos e legenda ficam à vista (antes o
+   bloco inteiro rolava e o texto sumia ao procurar a coluna do repasse) */
+.total { overflow-x:visible; }
+.total .rol { overflow-x:auto; }
 .total tr.ch td { font-size:14px; color:#ccc; font-weight:600; padding-top:5px; border-top:1px solid #333; }
 .total tr.ch td.lbl { color:#888; font-weight:400; }
 .total .cab td { font-size:10px; color:#777; text-transform:uppercase; letter-spacing:.6px; padding-bottom:4px; }
@@ -50,7 +60,7 @@ h1 span { color:var(--lar); }
 .afer .dif { color:#fff; font-weight:600; }
 .afer .aguarda { color:#999; font-style:italic; font-weight:400; }
 
-.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(530px,1fr)); gap:14px; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(660px,1fr)); gap:14px; }
 .card { background:var(--card); border-radius:12px; padding:14px 18px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
 .card.semcad { outline:2px solid #e0a800; }
 .card h2 { font-family:'Alfa Slab One',serif; font-size:17px; display:flex; justify-content:space-between; align-items:baseline; }
@@ -67,6 +77,17 @@ td.nm { min-width:96px; }
 td.rep { color:var(--verde); }
 /* mesma régua do bloco preto: preço cheio é contexto, faturamento é o número operativo */
 td.menu { color:#9a9a9a; }
+td.d99 { color:#4f7cac; font-style:italic; }
+tr.marca td.d99 { color:#7f9fc4; }
+td.neg { color:#555; }
+tr.marca td.neg { color:#8f8f8f; }
+tr.tot-row td .lbl { font-family:'Alfa Slab One',serif; font-weight:400; font-size:13px; }
+/* v22: nove colunas no card. Letra e folga menores; se ainda não couber, o card rola de lado
+   em vez de cortar a coluna do repasse. */
+.card { overflow-x:auto; }
+.card table { font-size:12px; }
+.card td.r { padding-left:7px; }
+.card td.nm { min-width:80px; }
 tr.cab td { font-size:9px; color:#aaa; text-transform:uppercase; letter-spacing:.5px; padding-bottom:2px; }
 /* nota do canal errado / taxa faltando: linha própria, para não empurrar as colunas */
 tr.nota td { font-size:10px; color:var(--cinza); padding:0 0 4px 14px; font-style:italic; }
@@ -116,16 +137,16 @@ footer { margin-top:30px; font-size:11px; color:var(--cinza); max-width:820px; l
 #login .obs { font-size:11px; color:var(--cinza); text-align:center; max-width:320px; line-height:1.5; }
 
 /* ---- telas estreitas (celular): a tabela rola na horizontal em vez de espremer ----
-   São 6 colunas, e espremer transforma "R$ 24.704" em duas linhas ou corta a última
+   São 9 colunas (v22), e espremer transforma "R$ 24.704" em duas linhas ou corta a última
    coluna sem avisar. Rolar na horizontal preserva todas as colunas legíveis. */
 @media (max-width: 640px) {
   body { padding:14px 12px 40px; }
   h1 { font-size:20px; }
   .grid { grid-template-columns:1fr; }
   .card { padding:12px 12px; overflow-x:auto; }
-  .card table { min-width:430px; }
+  .card table { min-width:640px; }
   .total { padding:14px 14px 12px; }
-  .total table { min-width:560px; }
+  .total table { min-width:820px; }
   #ult table { min-width:520px; }
   #ult { overflow-x:auto; }
   footer { font-size:10px; }
@@ -162,11 +183,18 @@ footer { margin-top:30px; font-size:11px; color:var(--cinza); max-width:820px; l
 <div id="ult"></div>
 <footer>
 <b>Canais:</b> 99Food (webhook ao vivo) + Balcão (PDV/SAG, atualiza a cada 5 min). <b>O iFood NÃO entra neste painel</b> — não existe fonte ao vivo dele hoje, então o Total é 99 + Balcão, não o faturamento da loja.<br>
-<b>Faturamento:</b> visão operacional, pode divergir do financeiro (o da 99 fecha D+2/D+3). <b>R$ da 99 = base de cálculo de comissão</b> (menu cheio, mais a taxa de pedido mínimo, menos o desconto que a LOJA banca; é a mesma base do royalty e do "faturamento realizado"). Conferida contra o financeiro da 99 em <b>todos os pedidos de 1 a 30 de julho, diferença zero</b>. <b>R$ do balcão</b> = o que foi vendido no PDV, já descontado o desconto dado no item, antes de taxas de cartão — a mesma régua de royalty do balcão. <b>Entra também a venda de balcão que o atendente fechou como delivery no PDV</b> (erro de fechamento, decisão do Marcos em 01/08); quando houver, o card mostra quanto foi. Pedido de app não cai aqui, então não conta duas vezes. Ticket médio calculado sobre o faturamento. Dia operacional com corte às 08h: a madrugada conta na noite anterior. Pedidos e R$ excluem cancelados; os cancelados da 99 aparecem à parte.<br>
-<b>Preço cheio:</b> o preço de <b>tabela</b> dos itens, antes de qualquer desconto que a casa dê — é o que a venda teria dado no preço do cardápio. A distância entre ele e o faturamento é o desconto que <b>a loja banca</b>. Na 99 é o valor do pedido no cardápio (não inclui a taxa de pedido mínimo, que é tarifa e não item). No balcão é preço × quantidade de cada item, o que pega tanto o desconto lançado como desconto quanto o <b>preço editado na hora da venda</b>, que não aparece em lugar nenhum do PDV como desconto. <b>Preço cheio não é faturamento</b>: quem manda em royalty, comissão e imposto é a coluna do faturamento, ao lado. O preço cheio serve para responder quanto a loja está abrindo mão, por marca e por canal — cor cinza na tela justamente para não ser confundido com o número que vale.<br>
-<b>Repasse aprox.:</b> o total que entra, <b>já somando o vale-refeição</b>. Na 99 ele tem duas partes: o <b>depósito da 99</b> (tira da base a taxa de pagamento, o custo de entrega e o frete que a loja banca, e devolve o subsídio de frete) mais o <b>vale-refeição</b>, que não passa pelo depósito — vem direto do operador do vale. A conta usa a forma de pagamento de cada pedido, que é o que mais pesa: pagando com vale, a 99 quase não deposita, mas o dinheiro entra igual. É <b>estimativa</b>: os percentuais saem do próprio financeiro da 99 numa janela móvel de 28 dias e se atualizam sozinhos. Erro medido contra o financeiro real de julho, sempre estimando um dia só com os 28 dias <i>anteriores</i> a ele (177 combinações loja×dia): <b>2,8% no dia de uma loja</b> (9 em cada 10 dias abaixo de 4,5%), <b>0,8% na semana de uma loja</b>, <b>0,1% no mês da rede</b>. <b>No balcão</b> é o bruto menos uma taxa média de cartão configurada por loja (hoje 3%): é <b>premissa</b>, não medição, porque o PDV não registra a forma de pagamento — e ali o vale já está dentro do bruto.<br>
-<b>Abas de período passado</b> (Ontem, Semana passada, Mês passado): a janela já fechou, então o painel busca o financeiro de verdade da 99 e mostra <b>ao lado</b> quanto ele fechou e o quanto a estimativa errou. Elas não se atualizam sozinhas — o número não muda mais. O financeiro da 99 fecha com 2 a 3 dias de atraso, então "Ontem" quase sempre ainda não tem aferição.<br>
-<b>O que este painel NÃO mostra:</b> o frete grátis bancado pela loja não aparece no faturamento (some da base junto com o desconto de comida) — mas está descontado no repasse. Para a conta fechada, vale o financeiro.<br>
+<b>Faturamento:</b> visão operacional, pode divergir do financeiro (o da 99 fecha D+2/D+3). <b>Faturamento da 99 = base de cálculo de comissão</b> (preço cheio, mais a taxa de pedido mínimo, menos o desconto de comida que a LOJA banca; é a mesma base do royalty e do "faturamento realizado"). <b>No balcão</b> é o que foi vendido no PDV, já descontado o desconto dado no item, antes de taxas de cartão, a mesma régua de royalty do balcão. <b>Entra também a venda de balcão que o atendente fechou como delivery no PDV</b> (erro de fechamento, decisão do Marcos em 01/08); quando houver, o card mostra quanto foi. Pedido de app não cai aqui, então não conta duas vezes. Faturamento e ticket médio ficam no topo de cada card e na linha da conta do bloco preto. Dia operacional com corte às 08h: a madrugada conta na noite anterior. Pedidos e R$ excluem cancelados; os cancelados da 99 aparecem à parte.<br>
+<b>Como o repasse se compõe (desde 12/09):</b> preço cheio − desconto da loja − frete grátis − custo de entregas − pagto online = <b>repasse</b>.<br>
+&nbsp;· <b>Preço cheio</b>: o preço de tabela dos itens, antes de qualquer desconto. Na 99 é o valor do pedido no cardápio; no balcão é preço × quantidade de cada item. <b>Preço cheio não é faturamento</b>: royalty, comissão e imposto saem do faturamento.<br>
+&nbsp;· <b>Bancado pela 99</b> (em azul): a parte do desconto que a 99 pagou ao cliente, em comida e em entrega. <b>Não entra nem sai do seu dinheiro</b>: não foi a loja que deu esse desconto, então a conta do repasse não o desconta. Está na tela para você ver quanto a plataforma pôs. Uma parte ela dá direto ao cliente (cupons e a sobra da taxa de entrega acima do limite do frete grátis) e nem aparece no financeiro da loja.<br>
+&nbsp;· <b>Desconto da loja</b>: a parte do desconto de comida que a loja pagou, já líquida da taxa de pedido mínimo, que é pouca (R$ 84,50 em 51 pedidos de 01/06 a 12/09 na rede, contando os cancelados). No balcão é tudo o que separa o preço de tabela do cobrado, inclusive o <b>preço editado na hora da venda</b>, que o PDV não registra como desconto.<br>
+&nbsp;· <b>Frete grátis</b>: a parte da entrega grátis que a loja pagou. A parte da 99 está no azul.<br>
+&nbsp;· <b>Custo de entregas</b>: o custo logístico que a 99 cobra da loja por pedido entregue. É outra coisa que o frete grátis: esse custo existe mesmo quando o cliente paga a entrega.<br>
+&nbsp;· <b>Pagto online</b>: a taxa de pagamento da 99, calculada pela forma de pagamento de cada pedido a partir do financeiro dela (hoje 3,2% do faturamento no pagamento online; zero no vale-refeição e em alguns outros meios). No balcão é a taxa média de cartão configurada por loja (hoje 3%): <b>premissa</b>, não medição, porque o PDV não registra a forma de pagamento.<br>
+&nbsp;· <b>Repasse</b>: o total que entra, <b>já somando o vale-refeição</b>. Na 99 são o <b>depósito da 99</b> e o <b>vale-refeição</b>, que não passa pelo depósito e vem direto do operador do vale; a divisão entre os dois é estimada pela forma de pagamento de cada pedido.<br>
+&nbsp;· <b>—</b> (travessão): não se aplica (o balcão não tem desconto da 99, frete grátis nem custo de entregas) ou não deu para calcular. A tabela mostra reais inteiros, então uma linha pode não fechar no olho por R$ 1 ou 2; a linha "conta", em centavos, fecha.<br>
+<b>Precisão na 99:</b> preço cheio, desconto da loja e frete grátis vêm exatos do próprio pedido: conferidos contra o financeiro da 99 em 14.739 pedidos de 03/08 a 06/09, bateram em 100%. O custo de entregas bateu em 99,6% e a taxa de pagamento sai da forma de pagamento de cada pedido. Conferido contra o financeiro fechado dos pedidos concluídos, na semana de 31/08 a 06/09 e em agosto inteiro, o repasse ficou a menos de 0,2% dele, com dois efeitos pequenos e de sinais opostos: pedido que o financeiro tem e o webhook não trouxe (deixa o painel abaixo) e custo de entrega que a 99 ajusta depois (deixa o painel acima). Nas abas de período passado essa conferência aparece ao vivo.<br>
+<b>Abas de período passado</b> (Ontem, Semana passada, Mês passado): a janela já fechou, então o painel busca o financeiro de verdade da 99, dos pedidos concluídos, e mostra <b>ao lado</b> quanto ele fechou e quanto a conta do painel errou. Elas não se atualizam sozinhas: o número não muda mais. O financeiro da 99 fecha com 2 a 3 dias de atraso, então "Ontem" quase sempre ainda não tem aferição.<br>
 <b>Cancelamentos:</b> hora, valor, itens, quanto tempo depois de aceitar e se já tinha entregador saem do webhook, ao vivo. O <b>motivo escrito</b> ("item esgotado", "outro caso") NÃO tem fonte ao vivo: a API da 99 não devolve razão de cancelamento e o código do financeiro só diz quem cancelou, não por quê. O texto só existe no export do portal e entra sozinho quando ele chega — o export é manual, então na prática costuma atrasar bem mais que 2 dias. Pra saber o motivo na hora, abrir o portal em Pedidos, Histórico de pedidos, aba Cancelado, e clicar no número do pedido.<br>
 <b>Balcão:</b> chega pelo PC do Marcos via ZeroTier. Com o Mac desligado o número congela, e a linha do balcão avisa há quantos minutos está parada. Lojas sem PDV integrado aparecem como "não integrado".
 </footer>
@@ -254,21 +282,33 @@ function setPeriodo(p){
   reagenda();
   tick();
 }
-// linha de canal do card: rótulo + pedidos + preço cheio + faturamento + repasse + ticket
-// `menu` undefined (linha que não tem preço cheio próprio) vira travessão, nunca zero.
-function linha(cls, nome, ped, menu, gmv, receb, extra){
+// colunas que SUBTRAEM na conta do repasse saem com "−". null/undefined = não se aplica (o
+// balcão não tem frete nem logística), sem estimativa ou edge anterior à v22: travessão, nunca
+// zero. Desconto de loja negativo só acontece com taxa de pedido mínimo e nenhum desconto, e aí
+// soma: "+".
+const neg = v => {
+  if (v === null || v === undefined) return "—";
+  if (Math.round(v) === 0) return brlK(0);
+  return v < 0 ? "+" + brlK(-v) : "−" + brlK(v);
+};
+// desconto bancado pela 99: só informação, sem sinal
+const azul = v => (v === null || v === undefined) ? "—" : brlK(v);
+// valor que pode sair negativo (depósito da 99 num recorte pequeno com vale e frete): "−R$ 4",
+// nunca "R$ -4"
+const brlKs = v => v < 0 ? "−" + brlK(-v) : brlK(v);
+// linha do card (v22): rótulo + pedidos + preço cheio + bancado pela 99 + desconto da loja +
+// frete grátis + custo de entregas + pagto online + repasse. `c` é o agregado da edge (marca,
+// canal ou total). Faturamento e ticket saíram das colunas e ficam no topo do card.
+function linha(cls, nome, c, extra){
   return '<tr class="' + cls + '"><td class="nm">' + nome + (extra || "") + '</td>' +
-         '<td class="r">' + ped + ' ped</td>' +
-         '<td class="r menu">' + (menu === null || menu === undefined ? "—" : brlK(menu)) + '</td>' +
-         '<td class="r">' + brlK(gmv) + '</td>' +
-         '<td class="r rep">' + rec(receb) + '</td>' +
-         '<td class="r tk">' + tk(gmv, ped) + '</td></tr>';
-}
-// quanto do preço de tabela a casa abriu mão. Só sai quando há o que mostrar: preço cheio
-// igual ao faturamento (balcão sem desconto no dia) não vira "0%" pendurado na tela.
-function descPct(menu, gmv){
-  if (!menu || !gmv || menu <= gmv) return '';
-  return ' · desconto ' + Math.round(100*(1 - gmv/menu)) + '%';
+         '<td class="r">' + c.ped + ' ped</td>' +
+         '<td class="r menu">' + (c.menu === null || c.menu === undefined ? "—" : brlK(c.menu)) + '</td>' +
+         '<td class="r d99">' + azul(c.d99) + '</td>' +
+         '<td class="r neg">' + neg(c.dloja) + '</td>' +
+         '<td class="r neg">' + neg(c.frete) + '</td>' +
+         '<td class="r neg">' + neg(c.entregas) + '</td>' +
+         '<td class="r neg">' + neg(c.pagto) + '</td>' +
+         '<td class="r rep">' + rec(c.receb) + '</td></tr>';
 }
 // linha de conferência das abas fechadas: a estimativa contra o que a 99 fechou de verdade
 function blocoAfer(d){
@@ -278,51 +318,71 @@ function blocoAfer(d){
     '(ele sai com 2 a 3 dias de atraso) — por enquanto só a estimativa.</span></div>';
   const est = d.rede.receb;
   const dif = (est === null || !a.recebido) ? null : 100*(est/a.recebido - 1);
-  return '<div class="afer">Financeiro da 99 já fechou: <b>' + brl(a.recebido) + '</b> recebido em ' +
+  return '<div class="afer">Financeiro da 99 já fechou, pedidos concluídos: <b>' + brl(a.recebido) + '</b> recebido em ' +
     a.pedidos.toLocaleString("pt-BR") + ' pedidos <span class="ress">(' + brlK(a.settlement) +
     ' depositados + ' + brlK(a.vr) + ' em vale)</span>' +
-    (dif === null ? '' : ' · a estimativa acima ficou <span class="dif">' +
-      (dif >= 0 ? '+' : '') + dif.toFixed(1).replace('.', ',') + '%</span>') +
+    (dif === null ? '' : ' · a conta acima ficou <span class="dif">' +
+      (Math.abs(dif) < 0.005 ? '' : (dif >= 0 ? '+' : '−')) + Math.abs(dif).toFixed(2).replace('.', ',') + '%</span>') +
     (a.parcial ? ' <span class="aguarda">⚠ parcial: o financeiro só cobre até ' +
       a.coberturaAte.split('-').reverse().join('/') + ', então o número real está incompleto (não é queda de venda).</span>' : '') +
     '</div>';
 }
 function bloco(d){
-  const dep = d.rede.rep, vale = d.rede.vr, bal = d.redeBalcao.receb;
-  return '<table>' +
-    '<tr class="cab"><td></td><td class="r">pedidos</td><td class="r">preço cheio</td><td class="r">faturamento</td><td class="r">repasse aprox.</td><td class="r">ticket médio</td></tr>' +
-    '<tr class="big"><td class="lbl">TOTAL</td><td class="r">' + d.redeTotal.ped + '</td>' +
-      '<td class="r menu">' + brlK(d.redeTotal.menu) + '</td>' +
-      '<td class="r gmv">' + brlK(d.redeTotal.gmv) + '</td><td class="r rep">' + rec(d.redeTotal.receb) + '</td>' +
-      '<td class="r" style="font-size:clamp(13px,1.35vw,18px)">' + tk(d.redeTotal.gmv, d.redeTotal.ped) + '</td></tr>' +
-    '<tr class="ch"><td class="lbl">99Food</td><td class="r">' + d.rede.ped + '</td>' +
-      '<td class="r menu">' + brlK(d.rede.menu) + '</td>' +
-      '<td class="r">' + brlK(d.rede.gmv) + '</td><td class="r">' + rec(d.rede.receb) + '</td>' +
-      '<td class="r">' + tk(d.rede.gmv, d.rede.ped) + '</td></tr>' +
-    '<tr class="ch"><td class="lbl">Balcão</td><td class="r">' + d.redeBalcao.ped + '</td>' +
-      '<td class="r menu">' + brlK(d.redeBalcao.menu) + '</td>' +
-      '<td class="r">' + brlK(d.redeBalcao.gmv) + '</td><td class="r">' + rec(d.redeBalcao.receb) + '</td>' +
-      '<td class="r">' + tk(d.redeBalcao.gmv, d.redeBalcao.ped) + '</td></tr>' +
-    '</table>' +
-    // de onde vem o repasse: as três parcelas, para o vale não parecer mágica
-    (d.redeTotal.receb !== null
-      ? '<div class="menuch">repasse = <b>' + brlK(dep === null ? 0 : dep) + '</b> depositados pela 99 + <b>' +
-        brlK(vale === null ? 0 : vale) + '</b> em vale-refeição (cai por fora, direto do operador) + <b>' +
-        brlK(bal === null ? 0 : bal) + '</b> do balcão' +
-        (d.redeTotal.gmv > 0 ? ' · <b>' + Math.round(100*d.redeTotal.receb/d.redeTotal.gmv) + '%</b> do faturamento' : '') +
+  const t = d.redeTotal, r = d.rede, b = d.redeBalcao;
+  const dep = r.rep, vale = r.vr, bal = b.receb;
+  // Edge anterior à v22 não manda as colunas da composição. Sem elas as colunas mostram "—" e as
+  // linhas que dependem delas somem, em vez de a tela quebrar num rollback só da edge.
+  const temComp = typeof t.dloja === "number";
+  const big = (cls, lbl, c) => '<tr class="' + cls + '"><td class="lbl">' + lbl + '</td><td class="r">' + c.ped + '</td>' +
+      '<td class="r menu">' + (typeof c.menu === "number" ? brlK(c.menu) : "—") + '</td><td class="r d99">' + azul(c.d99) + '</td>' +
+      '<td class="r neg">' + neg(c.dloja) + '</td><td class="r neg">' + neg(c.frete) + '</td>' +
+      '<td class="r neg">' + neg(c.entregas) + '</td><td class="r neg">' + neg(c.pagto) + '</td>' +
+      '<td class="r rep">' + rec(c.receb) + '</td></tr>';
+  // A conta escrita sai em CENTAVOS e o repasse dela é a soma dos termos já arredondados, para
+  // fechar no olho (em reais inteiros ela errava R$ 1). Termo negativo soma e troca o sinal; só a
+  // taxa de pedido mínimo faz isso, e nunca num total.
+  const c2 = v => Math.round((v || 0) * 100) / 100;
+  const termo = (rot, v) => (v >= 0 ? ' − ' : ' + ') + rot + ' <b>' + brl(Math.abs(v)) + '</b>';
+  let conta = '';
+  // Só com TODOS os termos numéricos, e conferida contra o repasse da tabela antes de aparecer: um
+  // termo nulo não pode virar zero e imprimir um repasse que não é o da tabela.
+  const termos = [t.menu, t.dloja, t.frete, t.entregas, t.pagto, t.receb];
+  if (temComp && termos.every(v => typeof v === "number" && isFinite(v))) {
+    const m = c2(t.menu), dl = c2(t.dloja), fr = c2(t.frete), en = c2(t.entregas), pg = c2(t.pagto);
+    const rr = Math.round((m - dl - fr - en - pg) * 100) / 100;
+    if (Math.abs(rr - t.receb) <= 0.05)
+      conta = 'conta: preço cheio <b>' + brl(m) + '</b>' + termo('desconto da loja', dl) + termo('frete grátis', fr) +
+              termo('custo de entregas', en) + termo('pagto online', pg) + ' = repasse <b>' + brl(rr) + '</b> · ';
+  }
+  // desconto que o cliente ganhou na 99 = o que a 99 pôs + o que a loja pôs (comida e frete)
+  const descCli = (r.d99 || 0) + (r.dloja || 0) + (r.frete || 0);
+  return '<div class="rol"><table>' +
+    '<tr class="cab"><td></td><td class="r">pedidos</td><td class="r">preço cheio</td><td class="r">bancado pela 99 *</td>' +
+    '<td class="r">desconto da loja</td><td class="r">frete grátis</td><td class="r">custo de entregas</td>' +
+    '<td class="r">pagto online</td><td class="r">repasse</td></tr>' +
+    big("big", "TOTAL", t) + big("ch", "99Food", r) + big("ch", "Balcão", b) +
+    '</table></div>' +
+    '<div class="menuch">' + conta + 'faturamento <b>' + brlK(t.gmv) + '</b><span class="ress"> (base do royalty)</span>' +
+      ' · ticket médio <b>' + tk(t.gmv, t.ped) + '</b></div>' +
+    (temComp && descCli > 0
+      ? '<div class="menuch">na 99 o cliente ganhou <b>' + brlK(descCli) + '</b> de desconto: a 99 bancou <b>' +
+        brlK(r.d99 || 0) + '</b> (' + Math.round(100*(r.d99 || 0)/descCli) + '%) e a loja <b>' +
+        brlK((r.dloja || 0) + (r.frete || 0)) + '</b> (comida e frete grátis)' +
+        ((r.d99f || 0) >= 1 ? '<span class="ress"> · ' + brlK(r.d99f) +
+          ' do que a 99 bancou ela deu direto ao cliente (cupons e sobra da taxa de entrega), fora do financeiro da loja</span>' : '') +
         '</div>' : '') +
-    (d.rede.canc ? '<div class="canc">' + d.rede.canc + ' cancelado' + (d.rede.canc>1?'s':'') + ' na 99 — até ' + brlK(d.rede.cancVal) +
+    // de onde vem o repasse: as três parcelas, para o vale não parecer mágica
+    (t.receb !== null
+      ? '<div class="menuch">repasse = <b>' + brlKs(dep === null ? 0 : dep) + '</b> depositados pela 99 + <b>' +
+        brlKs(vale === null ? 0 : vale) + '</b> em vale-refeição (cai por fora, direto do operador) + <b>' +
+        brlKs(bal === null ? 0 : bal) + '</b> do balcão' +
+        (t.gmv > 0 ? ' · <b>' + Math.round(100*t.receb/t.gmv) + '%</b> do faturamento' : '') +
+        '</div>' : '') +
+    (r.canc ? '<div class="canc">' + r.canc + ' cancelado' + (r.canc>1?'s':'') + ' na 99 — até ' + brlK(r.cancVal) +
         '<span class="ress"> (teto: em cancelamento parcial parte disso faturou; o valor fechado sai no financeiro em ~3 dias)</span></div>' : '') +
-    // a coluna mostra os dois números; esta linha diz o que a DISTÂNCIA entre eles significa,
-    // que é o que o preço cheio existe para responder.
-    (d.rede.menu > 0 && d.rede.menu > d.rede.gmv
-      ? '<div class="menuch">do preço cheio ao faturamento a casa abriu mão de <b>' +
-        Math.round(100*(1 - d.rede.gmv/d.rede.menu)) + '%</b> na 99 — é o desconto <b>em comida</b> que a loja banca' +
-        '<span class="ress"> (o frete grátis bancado pela loja não entra nesta conta, mas está descontado no repasse)</span></div>' : '') +
-    (d.redeBalcao.menu > d.redeBalcao.gmv
-      ? '<div class="menuch">no balcão a diferença é <b>' + brlK(d.redeBalcao.menu - d.redeBalcao.gmv) +
-        '</b><span class="ress"> — desconto dado no item mais preço editado na hora da venda</span></div>' : '') +
-    blocoAfer(d);
+    blocoAfer(d) +
+    (temComp ? '<div class="leg">* Bancado pela 99: desconto que a 99 pagou ao cliente, e não a loja. Fica fora da conta e ' +
+      '<b>não sai do seu repasse</b>; a conta subtrai só o que é da loja.</div>' : '');
 }
 function card(L, falhouBalcao){
   const b = L.balcao;
@@ -335,29 +395,31 @@ function card(L, falhouBalcao){
   // nota do balcão em LINHA PRÓPRIA: dentro da célula do nome ela empurrava as colunas
   // numéricas e quebrava "R$ 24.704" no meio (visto na aba Semana).
   const notaBal = [ce, semTaxa].filter(Boolean).join(' · ');
-  const linhaNota = notaBal ? '<tr class="nota"><td colspan="6">' + notaBal + '</td></tr>' : '';
+  const linhaNota = notaBal ? '<tr class="nota"><td colspan="9">' + notaBal + '</td></tr>' : '';
   return '<div class="card' + (L.semCad ? ' semcad' : '') + '">' +
     '<h2>' + esc(L.nome) + '<span class="v">' + brlK(L.total.gmv) +
       (L.total.receb === null ? '' : ' <em>→ ' + brlK(L.total.receb) + '</em>') + '</span></h2>' +
     (L.semCad ? '<div class="aviso">⚠ sem cadastro no de-para — avisar Craudio</div>' : '') +
-    '<div class="tot">' + L.total.ped + ' pedidos · ticket ' + tk(L.total.gmv, L.total.ped) +
-      descPct(L.total.menu, L.total.gmv) +
+    // faturamento e ticket saíram das colunas na v22 e ficam aqui, no topo do card
+    '<div class="tot">' + L.total.ped + ' pedidos · faturamento ' + brlK(L.total.gmv) + ' · ticket ' +
+      tk(L.total.gmv, L.total.ped) +
       (L.n9.canc ? ' · <span class="badge">' + L.n9.canc + ' canc na 99</span>' : '') + '</div>' +
     '<table>' +
-      '<tr class="cab"><td></td><td class="r">pedidos</td><td class="r">preço cheio</td><td class="r">faturamento</td><td class="r">repasse</td><td class="r">ticket</td></tr>' +
-      linha("canal", "99Food", L.n9.ped, L.n9.menu, L.n9.gmv, L.n9.receb) +
-      L.marcas.map(m => linha("marca", esc(m.nome), m.ped, m.menu, m.gmv, m.receb,
+      '<tr class="cab"><td></td><td class="r">pedidos</td><td class="r">preço<br>cheio</td>' +
+      '<td class="r">bancado<br>pela 99 *</td><td class="r">desconto<br>da loja</td><td class="r">frete<br>grátis</td>' +
+      '<td class="r">custo de<br>entregas</td><td class="r">pagto<br>online</td><td class="r">repasse</td></tr>' +
+      linha("canal", "99Food", L.n9) +
+      L.marcas.map(m => linha("marca", esc(m.nome), m,
           m.canc ? ' <span class="badge">+' + m.canc + 'c</span>' : '')).join("") +
-      (b ? linha("canal", "Balcão", b.ped, b.menu, b.gmv, b.receb, atraso) + linhaNota
-         : '<tr class="off"><td colspan="6">Balcão — ' +
+      (b ? linha("canal", "Balcão", b, atraso) + linhaNota
+         : '<tr class="off"><td colspan="9">Balcão — ' +
            // sem leitura do PDV (RPC ou heartbeat fora do ar) NÃO é o mesmo que loja sem PDV:
            // dizer "não integrado" numa falha temporária é afirmar algo falso sobre a loja.
            (falhouBalcao ? 'sem leitura agora (o painel não conseguiu falar com o PDV)'
                          : 'PDV não integrado nesta loja') + '</td></tr>') +
-      '<tr class="tot-row"><td class="lbl">Total</td><td class="r">' + L.total.ped + ' ped</td>' +
-      '<td class="r menu">' + brlK(L.total.menu) + '</td>' +
-      '<td class="r">' + brlK(L.total.gmv) + '</td><td class="r rep">' + rec(L.total.receb) + '</td>' +
-      '<td class="r">' + tk(L.total.gmv, L.total.ped) + '</td></tr>' +
+      linha("tot-row", '<span class="lbl">Total</span>', L.total) +
+      // a legenda do asterisco mora no bloco preto; o card repete o essencial para quem só lê o card
+      (typeof L.n9.dloja === "number" ? '<tr class="nota"><td colspan="9">* bancado pela 99 = desconto que a 99 pagou ao cliente; fica fora da conta do repasse</td></tr>' : '') +
     '</table></div>';
 }
 // caixinha de um cancelamento: o que dá pra saber AGORA, sem depender do motivo da 99
@@ -443,12 +505,15 @@ async function tick(){
     if (d.balcaoSemTaxa && d.balcaoSemTaxa.length)
       av.push("Sem taxa de cartão configurada em: " + d.balcaoSemTaxa.join(", ") + " — o repasse do balcão fica em branco nessas lojas.");
     const rc = d.repasseCoef || {};
-    if (rc.faltando) av.push("Repasse da 99 indisponível: os percentuais ainda não foram calculados a partir do financeiro.");
-    else if (rc.velho) av.push("Repasse da 99 usando percentuais de " + rc.idadeH + "h atrás (janela " + rc.janela + ") — o financeiro da 99 pode ter parado de chegar.");
-    // marcas === 0 não quebra nada, e é exatamente por isso que precisa de aviso: sem o
-    // subsídio de frete por marca o repasse do Burger's e do Rangos volta a sair baixo
-    // (uns 6 pontos no Burger's) e a tela pareceria normal.
-    if (!rc.faltando && rc.marcas === 0) av.push("Repasse da 99 sem o ajuste por marca — Burger's e Rangos aparecem abaixo do real. O cálculo por marca não foi gravado no último ciclo.");
+    if (rc.faltando) av.push("Repasse e taxa de pagamento da 99 indisponíveis: os percentuais ainda não foram calculados a partir do financeiro. Preço cheio, descontos, frete e custo de entregas seguem valendo.");
+    else if (rc.velho) av.push("Taxa de pagamento e divisão do vale da 99 calculadas com percentuais de " + rc.idadeH + "h atrás (janela " + rc.janela + "): o financeiro da 99 pode ter parado de chegar. Preço cheio, descontos, frete e custo de entregas não dependem disso.");
+    // v22: frete e custo de entrega vêm do próprio pedido; se algum vier maior que o faturamento do
+    // pedido, a edge limita na conta e conta aqui. Nunca aconteceu em 35.615 pedidos (01/06 a
+    // 12/09), então aparecer é sinal de payload estranho do webhook, e não pode passar calado.
+    if (d.anomalos > 0) av.push(d.anomalos + " pedido" + (d.anomalos > 1 ? "s" : "") + " da 99 com frete grátis ou custo de entrega maior que o faturamento do próprio pedido: o valor foi limitado na conta do repasse. Avisar o Craudio.");
+    // tela v22 com edge anterior (rollback só da edge, ou deploy que não pegou): as colunas da
+    // composição ficam "—"; a tela diz isso em vez de parecer que o desconto foi zero
+    if (d.redeTotal && typeof d.redeTotal.dloja !== "number") av.push("As colunas da composição do repasse não vieram do servidor (versão anterior da edge): preço cheio, faturamento e repasse seguem valendo. Avisar o Craudio.");
     const al = document.getElementById("alerta");
     al.textContent = av.join(" ");
     al.style.display = av.length ? "block" : "none";
