@@ -122,6 +122,20 @@ tr.tot-row td.lbl { font-family:'Alfa Slab One',serif; font-weight:400; font-siz
 .cx .mot.tem { color:var(--preto); }
 .cx .mot.aguarda { color:#8a6d00; font-weight:400; font-style:italic; }
 .cx .rapido { color:#b3261e; font-weight:600; }
+/* v23: pedidos de reembolso, mesma caixinha dos cancelamentos com borda âmbar. O valor é o do PEDIDO
+   (a 99 não manda o do reembolso), por isso menor e sem o vermelho de perda. */
+#reemb { margin-top:26px; }
+#reemb h3 { font-family:'Alfa Slab One',serif; font-size:15px; margin-bottom:2px; }
+#reemb .nota { font-size:11px; color:var(--cinza); margin-bottom:8px; }
+#reemb .lista { display:grid; grid-template-columns:repeat(auto-fill,minmax(400px,1fr)); gap:10px; }
+.cx.reemb { border-left-color:#e0a800; }
+.cx.reemb .val { color:#6b4e00; font-weight:600; font-size:12px; }
+.cx .cli { margin-top:6px; font-size:12.5px; color:var(--preto); font-style:italic; overflow-wrap:anywhere; }
+.cx .cli.vazio { color:var(--cinza); }
+/* r10 (Sonnet A1, rodada 4): o aviso posterior não pode parecer continuação da fala do cliente */
+.cx .cli.posterior { color:#6b4e00; font-style:normal; border-left:2px solid #e0a800; padding-left:6px; }
+.afer .fora { margin-top:4px; color:#bbb; }
+.afer .fora b { color:#fff; }
 footer { margin-top:30px; font-size:11px; color:var(--cinza); max-width:820px; line-height:1.6; }
 /* ---- tela de senha (só aparece na versão hospedada, onde TOKEN é vazio) ---- */
 #login { display:none; position:fixed; inset:0; background:var(--fundo); z-index:50;
@@ -149,6 +163,8 @@ footer { margin-top:30px; font-size:11px; color:var(--cinza); max-width:820px; l
   .total table { min-width:820px; }
   #ult table { min-width:520px; }
   #ult { overflow-x:auto; }
+  /* v23: a lista de caixinhas tinha coluna mínima de 400px e passava da tela do celular */
+  #canc .lista, #reemb .lista { grid-template-columns:1fr; }
   footer { font-size:10px; }
 }
 </style></head><body>
@@ -180,6 +196,7 @@ footer { margin-top:30px; font-size:11px; color:var(--cinza); max-width:820px; l
 <div class="total" id="total"></div>
 <div class="grid" id="lojas"></div>
 <div id="canc"></div>
+<div id="reemb"></div>
 <div id="ult"></div>
 <footer>
 <b>Canais:</b> 99Food (webhook ao vivo) + Balcão (PDV/SAG, atualiza a cada 5 min). <b>O iFood NÃO entra neste painel</b> — não existe fonte ao vivo dele hoje, então o Total é 99 + Balcão, não o faturamento da loja.<br>
@@ -196,6 +213,8 @@ footer { margin-top:30px; font-size:11px; color:var(--cinza); max-width:820px; l
 <b>Precisão na 99:</b> preço cheio, desconto da loja e frete grátis vêm exatos do próprio pedido: conferidos contra o financeiro da 99 em 14.739 pedidos de 03/08 a 06/09, bateram em 100%. O custo de entregas bateu em 99,6% e a taxa de pagamento sai da forma de pagamento de cada pedido. Conferido contra o financeiro fechado dos pedidos concluídos, na semana de 31/08 a 06/09 e em agosto inteiro, o repasse ficou a menos de 0,2% dele, com dois efeitos pequenos e de sinais opostos: pedido que o financeiro tem e o webhook não trouxe (deixa o painel abaixo) e custo de entrega que a 99 ajusta depois (deixa o painel acima). Nas abas de período passado essa conferência aparece ao vivo.<br>
 <b>Abas de período passado</b> (Ontem, Semana passada, Mês passado): a janela já fechou, então o painel busca o financeiro de verdade da 99, dos pedidos concluídos, e mostra <b>ao lado</b> quanto ele fechou e quanto a conta do painel errou. Elas não se atualizam sozinhas: o número não muda mais. O financeiro da 99 fecha com 2 a 3 dias de atraso, então "Ontem" quase sempre ainda não tem aferição.<br>
 <b>Cancelamentos:</b> hora, valor, itens, quanto tempo depois de aceitar e se já tinha entregador saem do webhook, ao vivo. O <b>motivo escrito</b> ("item esgotado", "outro caso") NÃO tem fonte ao vivo: a API da 99 não devolve razão de cancelamento e o código do financeiro só diz quem cancelou, não por quê. O texto só existe no export do portal e entra sozinho quando ele chega — o export é manual, então na prática costuma atrasar bem mais que 2 dias. Pra saber o motivo na hora, abrir o portal em Pedidos, Histórico de pedidos, aba Cancelado, e clicar no número do pedido.<br>
+<b>Pedidos de reembolso</b> (desde 12/09): quando o cliente pede reembolso pelo app, a 99 manda um aviso separado, por outro caminho e sem o valor. O painel confere que a compra existe na mesma loja e foi feita antes do aviso, mas não consegue confirmar quem mandou o aviso: o texto aparece como veio, cortado em 300 caracteres, e vários avisos sobre a mesma compra viram uma caixinha só, com a contagem, o texto e as fotos do primeiro aviso e, se um aviso posterior trouxer outro texto, esse texto embaixo, com a hora. Um pedido novo sobre a mesma compra, feito em outro dia, entra na caixinha do dia do primeiro aviso. O primeiro aviso decide o dia e o texto da caixinha, mesmo que seja um aviso falso anterior ao do cliente. O valor da caixinha é o da compra inteira, não o do reembolso, e das fotos o painel mostra só quantas vieram. Só aparece compra que o painel recebeu da 99 (as raras que não chegam ficam de fora), e um pedido que depois foi cancelado também pode aparecer, com o valor da compra. Aviso que chega mais de 5 dias depois da compra não aparece, e se o webhook receber mais de 5.000 mensagens sem assinatura num dia, o excedente não é guardado. Se a 99 aprovar, o reembolso é descontado do repasse da loja: no financeiro de junho a setembro, o desconto foi lançado 1 hora depois da compra na mediana, e o maior intervalo visto até agora ficou abaixo de 3 dias. O desconto entra no pagamento da 99 da data prevista, dias depois.<br>
+<b>Fora dos pedidos concluídos</b> (abas de período passado): além dos pedidos concluídos, o financeiro da 99 tem <b>reembolsos aprovados</b> de pedido entregue, <b>acertos a favor da loja</b> nesses pedidos (a 99 não diz o motivo), <b>pedidos cancelados</b> (o que a 99 pagou neles menos o que estornou) e <b>lançamentos sem pedido</b>, como anúncio pago e contestação ganha. No extrato da 99, o reembolso aprovado aparece como "Reembolso parcial (depois do atendimento)", o estorno de pedido cancelado como "Reembolsos de pedido" e o anúncio pago como "Despesas com anúncio". A linha de baixo da conferência mostra cada pedaço e o financeiro inteiro do período, e só aparece um dia depois de o financeiro da 99 alcançar o fim do período, porque as vendas da madrugada do último dia entram na carga seguinte. É tudo por data da compra: a 99 paga por data prevista, dias depois, então o que cai na conta junta pedaços de mais de uma semana e não bate com essa linha ao centavo. Na semana de 31/08 a 06/09, na rede, o financeiro inteiro ficou 0,23% abaixo do dos pedidos concluídos.<br>
 <b>Balcão:</b> chega pelo PC do Marcos via ZeroTier. Com o Mac desligado o número congela, e a linha do balcão avisa há quantos minutos está parada. Lojas sem PDV integrado aparecem como "não integrado".
 </footer>
 </div>
@@ -212,8 +231,10 @@ const TOKEN = "";
 const SLUG = "rede";
 const PERIODOS = ["dia","semana","mes","dia_ant","semana_ant","mes_ant"];
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const brl = v => "R$ " + v.toLocaleString("pt-BR",{minimumFractionDigits:2, maximumFractionDigits:2});
-const brlK = v => "R$ " + v.toLocaleString("pt-BR",{minimumFractionDigits:0, maximumFractionDigits:0});
+// v23: número ausente vira travessão em vez de derrubar a renderização (o tick de 02/08 que falhou com
+// "Cannot read properties of undefined (reading 'toLocaleString')" e nunca reproduziu)
+const brl = v => (typeof v === "number" && isFinite(v)) ? "R$ " + v.toLocaleString("pt-BR",{minimumFractionDigits:2, maximumFractionDigits:2}) : "—";
+const brlK = v => (typeof v === "number" && isFinite(v)) ? "R$ " + v.toLocaleString("pt-BR",{minimumFractionDigits:0, maximumFractionDigits:0}) : "—";
 // repasse não estimado vira travessão, nunca zero: "R$ 0" e "não sei" são decisões opostas
 const rec = v => (v === null || v === undefined) ? "—" : brlK(v);
 // na lista pedido a pedido os dois valores saem com centavos: "R$ 62,95 → R$ 50" fica
@@ -260,7 +281,7 @@ function entrar(){
   tick();
 }
 function limpaTela(){
-  for (const id of ["total","lojas","canc","ult"]) document.getElementById(id).innerHTML = "";
+  for (const id of ["total","lojas","canc","reemb","ult"]) document.getElementById(id).innerHTML = "";
   document.getElementById("rotulo").textContent = ""; // não deixa o rótulo do período anterior durante o load
   document.getElementById("alerta").style.display = "none";
 }
@@ -325,7 +346,31 @@ function blocoAfer(d){
       (Math.abs(dif) < 0.005 ? '' : (dif >= 0 ? '+' : '−')) + Math.abs(dif).toFixed(2).replace('.', ',') + '%</span>') +
     (a.parcial ? ' <span class="aguarda">⚠ parcial: o financeiro só cobre até ' +
       a.coberturaAte.split('-').reverse().join('/') + ', então o número real está incompleto (não é queda de venda).</span>' : '') +
+    blocoFora(a) +
     '</div>';
+}
+// v23: o financeiro da 99 fora dos pedidos concluídos, na mesma janela. Somados aos concluídos, os pedaços
+// dão o financeiro inteiro do período (por data do pedido; o pagamento sai em data prevista, dias depois). Sem `fora` (edge antiga ou pedaços que não bateram com a
+// aferição) não sai nada, e a conferência fica como era.
+function blocoFora(a){
+  const f = a.fora;
+  if (!f || typeof f.inteiro !== "number") return '';
+  const s = v => Math.round(v) === 0 ? brlK(0) : (v < 0 ? "−" : "+") + brlK(Math.abs(v));
+  const ped = n => n > 0 ? ' em ' + n.toLocaleString("pt-BR") + ' pedido' + (n > 1 ? 's' : '') : '';
+  const partes = [
+    'reembolsos aprovados pela 99 <b>' + s(f.reembolsos) + '</b>' + ped(f.reembolsosPedidos),
+    // sem contagem: um pedido pode ter reembolso E acerto, e as duas contagens somadas enganariam (Sonnet)
+    f.acertos >= 0.5 ? 'acertos a favor da loja <b>' + s(f.acertos) + '</b>' +
+      ' (a 99 pagou a mais depois do pedido e não diz por quê)' : '',
+    'pedidos cancelados: ' + (f.cancelados >= 0 ? 'sobraram <b>' + brlK(f.cancelados) + '</b> para a loja'
+                                                : 'saíram <b>' + brlK(-f.cancelados) + '</b> da loja') +
+      ' (o que a 99 pagou neles menos o que estornou)',
+    'lançamentos sem pedido, como anúncio pago e contestação ganha, <b>' + s(f.avulsos) + '</b>',
+    Math.abs(f.outros) >= 0.5 ? 'outros <b>' + s(f.outros) + '</b>' : '',
+  ].filter(Boolean);
+  return '<div class="fora">Além dos pedidos concluídos, o financeiro da 99 do período teve: ' + partes.join(' · ') +
+    '. Financeiro inteiro do período: <b>' + brl(f.inteiro) + '</b> <span class="ress">(os ' + brlK(a.settlement) +
+    ' dos concluídos mais esses pedaços; é por data da compra, não é o valor de um depósito na conta)</span></div>';
 }
 function bloco(d){
   const t = d.redeTotal, r = d.rede, b = d.redeBalcao;
@@ -467,6 +512,49 @@ function blocoCanc(d){
     (d.cancelamentosTruncado ? ' <b>Mostrando os ' + lista.length + ' mais recentes de ' + total + '.</b>' : '') + '</div>' +
     '<div class="lista">' + lista.map(cxCanc).join("") + '</div>';
 }
+const minutos = m => m < 60 ? m + " min" : Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0");
+// v23: caixinha de uma COMPRA com pedido de reembolso (r7: uma por compra). O valor é o faturamento da compra: a 99 não manda o do reembolso.
+function cxReemb(x, periodo){
+  const dia = (periodo === "dia" || !x.dia) ? "" : esc(x.dia) + " ";
+  // r6: a edge manda o sinal; negativo = o cliente pediu antes de o pedido ser dado como entregue
+  const m = x.minAposEntrega;
+  const entrega = (typeof m === "number" && isFinite(m) && x.hEntrega)
+    ? ', ' + minutos(Math.abs(Math.round(m))) + (m < 0 ? ' antes' : ' depois') + ' da entrega (' + esc(x.hEntrega) + ')'
+    : ' (o painel não recebeu a hora da entrega)';
+  const nf = Math.max(0, Number(x.fotos) || 0), nc = Math.max(1, Number(x.avisos) || 1);
+  const texto = typeof x.motivo === "string" ? x.motivo.trim() : "";
+  // r9 (N1 do Opus): texto e fotos são os do PRIMEIRO aviso; o texto de um aviso posterior diferente vem à parte
+  const posterior = typeof x.motivoUltimo === "string" ? x.motivoUltimo.trim() : "";
+  return '<div class="cx reemb">' +
+    '<div class="top"><span class="loja">' + esc(x.loja) + ' · ' + esc(x.marca) +
+      ' <span class="num">#' + esc(x.num) + '</span></span>' +
+      '<span class="val">compra de ' + brl(Number(x.valor) || 0) + '</span></div>' +
+    '<div class="it">' + esc(x.itens || "(sem itens no evento)") + '</div>' +
+    '<div class="meta">' + (x.hPedido ? '<span>pediu reembolso ' + dia + esc(x.hPedido) + entrega + '</span>' : '') +
+      (nf ? '<span>' + nf + ' foto' + (nf > 1 ? 's' : '') + ' do cliente</span>' : '') +
+      (nc > 1 ? '<span>' + nc + ' avisos sobre esta compra (texto e fotos do primeiro)</span>' : '') +
+    '</div>' +
+    (texto ? '<div class="cli">“' + esc(texto) + '”</div>' : '<div class="cli vazio">o cliente não escreveu nada</div>') +
+    (posterior ? '<div class="cli posterior">aviso posterior' + (x.quandoUltimo ? ' (' + esc(x.quandoUltimo) + ')' : '') + ', com outro texto: “' + esc(posterior) + '”</div>' : '') +
+    '</div>';
+}
+function blocoReemb(d){
+  // edge anterior à v23 não manda a lista: sem bloco e sem erro (rollback só da edge)
+  if (!Array.isArray(d.reembolsos)) return '';
+  if (d.reembolsosFalhou)
+    return '<h3>Pedidos de reembolso</h3><div class="nota">Não consegui carregar os pedidos de reembolso agora (o resto do painel continua válido).</div>';
+  const quando = { dia:"hoje", semana:"na semana", mes:"no mês", dia_ant:"ontem", semana_ant:"na semana", mes_ant:"no mês" }[d.periodo] || "";
+  const lista = d.reembolsos;
+  const total = typeof d.reembolsosTotal === "number" ? d.reembolsosTotal : lista.length;
+  const cobertura = d.reembolsosDesde
+    ? ' <b>O painel guarda esses avisos desde ' + esc(d.reembolsosDesde) + '</b>; o que veio antes não aparece aqui.'
+    : '';
+  if (!total) return cobertura ? '<h3>Pedidos de reembolso ' + quando + ' — sem registro</h3><div class="nota">' + cobertura.trim() + '</div>' : '';
+  return '<h3>Pedidos de reembolso ' + quando + ' — ' + total + '</h3>' +
+    '<div class="nota">Ainda é só o pedido do cliente pelo app da 99; quem decide é a 99. O aviso não traz o valor do reembolso: o valor na caixinha é o da <b>compra</b> inteira, e o reembolso pode ser menor. Se a 99 aprovar, o reembolso é descontado do repasse da loja e aparece na conferência das abas de período passado. Uma caixinha por compra; só entra compra real da mesma loja feita antes do aviso, e o texto aparece como veio.' + cobertura +
+    (d.reembolsosTruncado ? ' <b>Mostrando os ' + lista.length + ' mais recentes de ' + total + '.</b>' : '') + '</div>' +
+    '<div class="lista">' + lista.map(x => cxReemb(x, d.periodo)).join("") + '</div>';
+}
 async function tick(){
   const meu = ++reqId; // qualquer fetch anterior (aba trocada ou tick lento) fica obsoleto
   const auth = pedidoAuth();
@@ -530,6 +618,7 @@ async function tick(){
     document.getElementById("total").innerHTML = bloco(d);
     document.getElementById("lojas").innerHTML = d.lojas.map(L => card(L, d.balcaoFalhou)).join("");
     document.getElementById("canc").innerHTML = blocoCanc(d);
+    document.getElementById("reemb").innerHTML = blocoReemb(d);
     document.getElementById("ult").innerHTML = d.ultimos.length ?
       '<h3>' + (periodo === "dia" ? "Chegando agora (99)" : "Últimos pedidos (99)") + '</h3><table>' +
       // duas colunas de dinheiro lado a lado sem rótulo viram adivinhação
