@@ -344,8 +344,9 @@ function blocoAfer(d){
     ' depositados + ' + brlK(a.vr) + ' em vale)</span>' +
     (dif === null ? '' : ' · a conta acima ficou <span class="dif">' +
       (Math.abs(dif) < 0.005 ? '' : (dif >= 0 ? '+' : '−')) + Math.abs(dif).toFixed(2).replace('.', ',') + '%</span>') +
-    (a.parcial ? ' <span class="aguarda">⚠ parcial: o financeiro só cobre até ' +
-      a.coberturaAte.split('-').reverse().join('/') + ', então o número real está incompleto (não é queda de venda).</span>' : '') +
+    (a.parcial ? ' <span class="aguarda">⚠ parcial: o financeiro da 99 chegou até ' + a.coberturaAte.split('-').reverse().join('/') +
+      (a.coberturaMinima ? ' e esta janela só fica completa quando ele chegar a ' + a.coberturaMinima.split('-').reverse().join('/') : '') +
+      '. O número real ainda está incompleto (não é queda de venda).</span>' : '') +
     blocoFora(a) +
     '</div>';
 }
