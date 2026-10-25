@@ -143,6 +143,23 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
 .tot .x { font: 600 20px var(--f-display); font-variant-numeric: tabular-nums; }
 .tot .y { font: 400 11px var(--f-data); color: var(--muted); }
 
+/* exterior */
+.card[hidden] { display: none; }
+.ext-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 8px 12px; }
+.ext-head .btn { font-size: 13px; padding: 5px 10px; }
+.ext { display: grid; gap: 10px; }
+.ext-sec { display: grid; gap: 6px; }
+.ext-sec .k { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted); }
+.ext-sec .k b { color: var(--ink); font: 700 26px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.ext-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; }
+.ext-row .nm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ext-row .p { font: 700 24px/1 var(--f-display); font-variant-numeric: tabular-nums; text-align: right; }
+.ext-row .v { grid-column: 1 / 3; font: 400 12px var(--f-data); color: var(--muted); font-variant-numeric: tabular-nums; }
+.ext-row .bar2 { grid-column: 1 / 3; position: relative; height: 6px; background: var(--sunk); border-radius: 3px; }
+.ext-row .bar2 > span { position: absolute; inset: 0 auto 0 0; border-radius: 3px; transition: width .6s ease; }
+.ext-row .bar2 > i { position: absolute; top: -3px; bottom: -3px; left: 50%; border-left: 2px dashed var(--muted); }
+.ext .note { font-size: 12px; line-height: 1.45; color: var(--muted); text-wrap: pretty; }
+
 /* mapa de quadrados */
 .map { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-auto-rows: minmax(64px, auto); gap: 4px; }
 .tile { border: 1px solid var(--line); border-radius: 6px; padding: 4px 5px; cursor: pointer; display: grid; align-content: space-between; min-width: 0; background: var(--sunk); color: var(--ink); text-align: left; position: relative; }
@@ -207,15 +224,28 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
   </nav>
 
   <div class="main">
-    <section class="card" aria-live="polite">
-      <div>
-        <h2 id="title">Presidente · Brasil</h2>
-        <div class="sub" id="source"></div>
-      </div>
-      <div class="lead" id="lead">Buscando os arquivos de divulgação do TSE…</div>
-      <div class="cands" id="cands"></div>
-      <div class="totals" id="totals"></div>
-    </section>
+    <div style="display:grid;gap:14px;min-width:0">
+      <section class="card" aria-live="polite">
+        <div>
+          <h2 id="title">Presidente · Brasil</h2>
+          <div class="sub" id="source"></div>
+        </div>
+        <div class="lead" id="lead">Buscando os arquivos de divulgação do TSE…</div>
+        <div class="cands" id="cands"></div>
+        <div class="totals" id="totals"></div>
+      </section>
+
+      <section class="card" id="extCard" aria-live="polite">
+        <div class="ext-head">
+          <div>
+            <h2>Exterior · Presidente</h2>
+            <div class="sub" id="extSub">Votos de brasileiros que moram fora do país (o TSE chama de ZZ).</div>
+          </div>
+          <button id="extOpen" class="btn" type="button">Abrir no resultado</button>
+        </div>
+        <div id="ext"><div class="empty">Buscando o arquivo do exterior…</div></div>
+      </section>
+    </div>
 
     <div style="display:grid;gap:14px;min-width:0">
       <section class="card chart" aria-live="polite">
@@ -725,7 +755,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
       var d = src[uf];
       var pos = POS[uf];
       var style = "grid-row:" + pos[0] + ";grid-column:" + pos[1] + ";";
-      var inner = '<span class="uf">' + uf.toUpperCase() + "</span>";
+      var inner = '<span class="uf">' + (uf === "zz" ? "EXT" : uf.toUpperCase()) + "</span>";
       var cls = "tile" + (state.uf === uf ? " sel" : "");
       var label = UF_NOME[uf];
       if (d && d.vv) {
@@ -901,6 +931,32 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
       "<span>" + sw('<circle cx="10" cy="5" r="3.5" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.5"/>') + "contagem do 1º turno, para comparar</span>";
   }
 
+  /* quadro do exterior (presidente): o arquivo zz do TSE, com a referência do 1º turno */
+  function renderExt() {
+    var card = $("extCard");
+    card.hidden = state.tab !== "pres";
+    if (card.hidden) return;
+    var d = state.pres.zz;
+    if (!d) {
+      $("ext").innerHTML = '<div class="empty">' + (state.lastErr ? "Ainda não consegui ler o arquivo do exterior. Tento de novo a cada 30 segundos." : "Buscando o arquivo do exterior…") + "</div>";
+      return;
+    }
+    var p = d.ts ? 100 * d.st / d.ts : 0;
+    var cols = nationalRankColors();
+    var html = '<div class="ext"><div class="ext-sec"><div class="k"><span>Seções totalizadas: ' + fmt.format(d.st) + " de " + fmt.format(d.ts) + "</span><b>" + fmtP(p) + '%</b></div>' +
+      '<div class="track" aria-hidden="true"><span style="width:' + Math.min(100, p).toFixed(1) + '%"></span></div></div>';
+    d.cands.slice().sort(porVotos).slice(0, 2).forEach(function (k, i) {
+      var pc = d.vv ? 100 * k.v / d.vv : 0;
+      html += '<div class="ext-row"><div class="nm">' + (d.vv ? (i + 1) + "º · " : "") + esc(k.nm) + '</div><div class="p">' + fmtP(pc) + "%</div>" +
+        '<div class="bar2"><span style="width:' + Math.min(100, pc).toFixed(2) + "%;background:" + (cols[k.n] || "var(--c3)") + '"></span><i title="50% dos válidos"></i></div>' +
+        '<div class="v">' + fmt.format(k.v) + " votos</div></div>";
+    });
+    var nota = d.vv ? "Válidos " + fmt.format(d.vv) + " · comparecimento " + fmtP(100 * d.comp / Math.max(1, d.comp + d.abst)) + "%. " : "";
+    if (T1UF.zz) nota += "No 1º turno, no exterior, Flávio teve " + fmtP(T1UF.zz.fim, 1) + "% e Lula " + fmtP(100 - T1UF.zz.fim, 1) + "% dos votos dos dois. ";
+    nota += "O exterior pesa cerca de 0,3% dos votos válidos do Brasil. No 1º turno, 57% das urnas de fora entraram de uma vez às 17h08 de Brasília e o resto foi chegando até perto das 23h.";
+    $("ext").innerHTML = html + '<div class="note">' + nota + "</div></div>";
+  }
+
   function renderUfSelect() {
     var opts;
     if (state.tab === "pres") {
@@ -925,7 +981,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     $("codes").textContent = "Eleições " + ELE.pres + " (presidente) e " + ELE.gov + " (governador)" + (state.cfg === "ok" ? ", conferidas no cadastro de eleições do TSE." : ", ainda sem conferência no cadastro de eleições do TSE.");
   }
 
-  function renderAll() { renderTabs(); renderUfSelect(); renderStrip(); renderMain(); renderProj(); renderMap(); renderCurve(); renderStamp(); }
+  function renderAll() { renderTabs(); renderUfSelect(); renderStrip(); renderMain(); renderExt(); renderProj(); renderMap(); renderCurve(); renderStamp(); }
 
   function refresh() {
     if (state.busy) return;
@@ -997,6 +1053,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
   $("map").addEventListener("click", function (e) { var t = e.target.closest(".tile"); if (!t) return; var uf = t.dataset.uf; setUf(state.uf === uf && state.tab === "pres" ? "br" : uf); });
   $("pause").addEventListener("click", function () { state.paused = !state.paused; state.countdown = REFRESH; renderStamp(); });
   $("now").addEventListener("click", function () { refresh(); });
+  $("extOpen").addEventListener("click", function () { setUf("zz"); $("title").scrollIntoView({ block: "start" }); });
 
   setInterval(function () {
     if (state.paused || state.busy) return;
