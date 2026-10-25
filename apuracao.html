@@ -104,6 +104,20 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
 .chip.mute { color: var(--muted); }
 .chip.wrap { white-space: normal; line-height: 1.3; padding: 4px 8px; }
 
+/* decisão matemática: medidor no resultado e aviso no topo */
+.dec { display: grid; gap: 5px; padding-top: 8px; border-top: 1px solid var(--line); }
+.dec-k { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 10px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.dec-k b { font: 700 18px/1 var(--f-display); letter-spacing: 0; color: var(--ink); font-variant-numeric: tabular-nums; }
+.dec-bar { position: relative; height: 8px; border-radius: 4px; background: var(--surface); border: 1px solid var(--line); overflow: hidden; }
+.dec-bar > span { position: absolute; inset: 0 auto 0 0; background: var(--muted); transition: width .6s ease; }
+.dec.on .dec-bar > span { background: var(--ok); }
+.dec.on .dec-k b { color: var(--ok); }
+.decide { border: 2px solid var(--ok); background: color-mix(in srgb, var(--ok) 12%, var(--surface)); border-radius: 10px; padding: 14px 16px; display: grid; gap: 4px; }
+.decide[hidden] { display: none; }
+.decide .t { font: 700 28px/1.05 var(--f-display); text-transform: uppercase; letter-spacing: .01em; color: var(--ok); text-wrap: balance; }
+.decide .s { font-size: 13px; line-height: 1.5; text-wrap: pretty; }
+.decide .s b { font-family: var(--f-data); font-weight: 500; font-variant-numeric: tabular-nums; }
+
 /* projeção final */
 .proj { display: grid; gap: 14px; }
 .prow { display: grid; gap: 5px; }
@@ -167,6 +181,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
 .tile.sel { outline: 2px solid var(--ink); outline-offset: 1px; }
 .tile.off { cursor: default; opacity: .55; }
 .tile.done { border: 2px solid var(--ink); }
+.tile .ck { position: absolute; top: 3px; right: 5px; font: 700 13px/1 var(--f-body); color: var(--ok); }
 .tile .uf { font: 700 15px/1 var(--f-display); }
 .tile .ld { font: 600 11.5px/1.05 var(--f-display); letter-spacing: .01em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 .tile .lp { font: 500 11px/1 var(--f-data); font-variant-numeric: tabular-nums; }
@@ -201,6 +216,11 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
       <button id="wake" class="btn" type="button" aria-pressed="false" hidden>Manter tela acesa</button>
     </div>
   </header>
+
+  <section class="decide" id="decide" role="status" aria-live="assertive" hidden>
+    <div class="t" id="decideT"></div>
+    <div class="s" id="decideS"></div>
+  </section>
 
   <section class="strip" aria-label="Andamento da totalização">
     <div class="strip-head">
@@ -281,6 +301,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     Fonte: arquivos públicos de divulgação do TSE em <a href="https://resultados.tse.jus.br/" target="_blank" rel="noopener">resultados.tse.jus.br</a>, lidos direto pelo navegador a cada 30 segundos. <span id="codes"></span>
     O total do Brasil para presidente é a soma das 27 UFs e do exterior, porque o arquivo nacional do TSE atualiza com atraso; quando o arquivo nacional estiver mais adiantado, o painel usa ele.
     Percentuais sobre votos válidos (sem brancos e nulos). "Faltam" e as projeções são estimativas deste painel, não do TSE. Os votos que faltam saem da média de votos válidos por seção já totalizada em cada estado.
+    "Decisão matemática" não é estimativa: compara a vantagem do líder com o número de eleitores aptos nas seções que o TSE ainda não totalizou (campo do próprio arquivo do TSE). Quando a vantagem passa desse número, nem se todos esses eleitores tivessem votado no 2º colocado haveria virada; aí aparece o aviso no topo (Presidência) e o ✓ no mapa (estado a estado). É uma conta mais dura que a da estimativa, por isso dispara mais tarde.
     A projeção soma 28 projeções, uma por estado e uma do exterior: em cada uma, a contagem de agora ganha um quarto da diferença entre o que Flávio tinha no 1º turno com o mesmo % das seções daquele lugar e o que terminou tendo lá, nos votos dos dois, e o peso de cada lugar são os votos que ele terá no fim. As curvas do 1º turno foram remontadas com a hora de chegada de cada boletim de urna (dados abertos do TSE): os votos de Flávio e de Lula batem com o resultado final em todas as UFs, e a curva do Brasil reproduz as leituras feitas durante a apuração de 04/10.
     Por que um quarto: a mesma conta, feita com as curvas do 1º turno de 2022 sobre a apuração do 2º turno de 2022, errou em média 0,48 ponto sem correção, 0,22 com um quarto e 1,04 com a correção inteira, entre 10% e 90% das seções. A ordem de contagem de cada estado se repete só em parte de um turno para o outro. A curva nacional única, que esta página usava antes, teria errado 2,39 pontos em média em 2022. As duas pontas mostram o que dá sem correção e com a correção inteira. Resultado parcial: só vale o que o TSE proclamar.
   </p>
@@ -409,7 +430,9 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
 
   var fmt = new Intl.NumberFormat("pt-BR");
   var fmtP = function (x, d) { return (isFinite(x) ? x : 0).toLocaleString("pt-BR", { minimumFractionDigits: d == null ? 2 : d, maximumFractionDigits: d == null ? 2 : d }); };
-  var fmtVotos = function (x) { return x >= 1e6 ? fmtP(x / 1e6, 1) + " milhões" : fmt.format(Math.round(x)); };
+  var fmtVotos = function (x) { return x >= 1e6 ? fmtP(x / 1e6, 1) + (x < 1.95e6 ? " milhão" : " milhões") : fmt.format(Math.round(x)); };
+  /* "3,2 milhões de votos", "980.000 votos" */
+  var qtd = function (x, nome) { return "<b>" + fmtVotos(x) + "</b> " + (x >= 1e6 ? "de " : "") + nome; };
   var toI = function (s) { var n = parseInt(s, 10); return isFinite(n) ? n : 0; };
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]; }); };
@@ -489,16 +512,18 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
       hg: u.hg || "", dg: u.dg || "", nv: toI(c.nv) || 1,
       ts: toI(s.ts), st: toI(s.st),
       te: toI(e.te), comp: toI(e.c), abst: toI(e.a),
+      /* eleitores aptos nas seções ainda não totalizadas: teto dos votos que ainda podem entrar */
+      esnt: e.esnt != null ? toI(e.esnt) : Math.max(0, toI(e.te) - toI(e.est)),
       vv: toI(v.vv), vb: toI(v.vb), vn: toI(v.tvn),
       cands: cands
     };
   }
 
   function sumAll(list) {
-    var agg = { hg: "", hgMin: "", dg: "", nv: 1, ts: 0, st: 0, te: 0, comp: 0, abst: 0, vv: 0, vb: 0, vn: 0, cands: [] };
+    var agg = { hg: "", hgMin: "", dg: "", nv: 1, ts: 0, st: 0, te: 0, comp: 0, abst: 0, esnt: 0, vv: 0, vb: 0, vn: 0, cands: [] };
     var byN = {};
     list.forEach(function (d) {
-      ["ts","st","te","comp","abst","vv","vb","vn"].forEach(function (k) { agg[k] += d[k]; });
+      ["ts","st","te","comp","abst","esnt","vv","vb","vn"].forEach(function (k) { agg[k] += d[k]; });
       if (!agg.hg || d.hg > agg.hg) agg.hg = d.hg;
       if (!agg.hgMin || d.hg < agg.hgMin) agg.hgMin = d.hg;
       agg.dg = d.dg; agg.nv = d.nv;
@@ -589,13 +614,57 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     var m = d.st ? d.vv / d.st : media;
     return (d.ts - d.st) * m;
   }
+  function faltamBR() {
+    var m = mediaBR(), tot = 0, n = 0;
+    UFS_PRES.forEach(function (u) { if (state.pres[u]) { n++; tot += faltaUm(state.pres[u], m); } });
+    return n === UFS_PRES.length ? tot : faltaUm(state.presBR, m);
+  }
   function faltam() {
-    if (state.tab === "pres" && state.uf === "br") {
-      var m = mediaBR(), tot = 0, n = 0;
-      UFS_PRES.forEach(function (u) { if (state.pres[u]) { n++; tot += faltaUm(state.pres[u], m); } });
-      return n === UFS_PRES.length ? tot : faltaUm(state.presBR, m);
-    }
+    if (state.tab === "pres" && state.uf === "br") return faltamBR();
     return faltaUm(current(), state.tab === "pres" ? mediaBR() : 0);
+  }
+
+  /* Decisão matemática: a vantagem do 1º colocado é maior que o número de eleitores aptos nas seções que ainda não
+     foram totalizadas (campo esnt do TSE). Nem se todos eles tivessem ido votar e votado no 2º colocado haveria virada;
+     não depende de estimativa de comparecimento nem de votos válidos. "Na prática" é o critério mais fraco: a vantagem
+     passa da estimativa de votos válidos que faltam (média por seção), que pode errar. "tse" é o status de eleito
+     gravado pelo próprio TSE no arquivo. */
+  function decisao(d, resto) {
+    if (!d || !d.vv) return null;
+    var s = d.cands.slice().sort(porVotos), a = s[0], b = s[1];
+    if (!a || !b) return null;
+    var lead = a.v - b.v, falta = d.st >= d.ts ? 0 : d.esnt;
+    return {
+      a: a, b: b, lead: lead, falta: falta,
+      cobre: falta ? 100 * lead / falta : (lead > 0 ? 100 : 0),
+      mat: lead > 0 && lead > falta,
+      pratica: resto > 0 && lead > resto,
+      tse: /^eleit/i.test(a.st)
+    };
+  }
+  function blocoDecisao(dc, resto) {
+    if (!dc) return "";
+    var a = dc.a, b = dc.b, h = "";
+    if (resto > 0 && !dc.mat && !dc.tse) {
+      var precisa = 50 + 50 * dc.lead / resto;
+      h += '<div class="aux">Faltam cerca de ' + qtd(resto, "votos válidos") + " (estimativa). " +
+        (precisa <= 100 ? "Para virar, " + esc(b.nm) + " precisaria de <b>" + fmtP(precisa, 1) + "%</b> deles." : "Nem com todos eles " + esc(b.nm) + " alcançaria " + esc(a.nm) + ".") + "</div>";
+    }
+    var w = Math.max(0, Math.min(100, dc.cobre));
+    var val, txt;
+    if (dc.mat) {
+      val = "decidida";
+      txt = dc.falta
+        ? "A vantagem de " + qtd(dc.lead, "votos") + " é maior que os " + qtd(dc.falta, "eleitores") + " aptos das seções que faltam apurar. Nem se todos eles tivessem votado em " + esc(b.nm) + " haveria virada."
+        : "Todas as seções foram totalizadas.";
+    } else {
+      val = fmtP(w, w >= 90 ? 1 : 0) + "%";
+      txt = "A vantagem de " + qtd(dc.lead, "votos") + " cobre " + val + " dos " + qtd(dc.falta, "eleitores") + " aptos das seções que faltam apurar. " +
+        (dc.pratica ? "Pela estimativa a virada já não cabe, mas ainda não é certeza matemática: vira quando passar de 100%." : "Quando passar de 100%, nem com todos eles votando em " + esc(b.nm) + " dá para virar.");
+    }
+    return h + '<div class="dec' + (dc.mat ? " on" : "") + '"><div class="dec-k"><span>Decisão matemática</span><b>' + val + '</b></div>' +
+      '<div class="dec-bar" aria-hidden="true"><span style="width:' + w.toFixed(1) + '%"></span></div>' +
+      '<div class="aux">' + txt + "</div></div>";
   }
   /* valor da curva ys (na grade T1G) com p% das seções; antes de 1% fica no ponto de 1% */
   function interp(ys, p) {
@@ -709,16 +778,15 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
       html = "<div>Os arquivos do 2º turno estão no ar e ainda zerados. A votação vai até 17h (horário de Brasília) e a apuração começa logo depois.</div>";
     } else if (a && b) {
       var pa = 100 * a.v / vv, pb = 100 * b.v / vv;
-      var chip = a.st ? '<span class="chip ok">' + esc(a.st) + "</span>" : (pSec >= 100 ? '<span class="chip mute">100% das seções</span>' : '<span class="chip warn">parcial</span>');
+      var resto = pSec < 100 ? faltam() : 0;
+      var dc = decisao(d, resto);
+      var chip = a.st ? '<span class="chip ok">' + esc(a.st) + "</span>"
+        : dc && dc.mat && pSec < 100 ? '<span class="chip ok">decidido matematicamente</span>'
+        : pSec >= 100 ? '<span class="chip mute">100% das seções</span>'
+        : dc && dc.pratica ? '<span class="chip warn">virada fora da estimativa</span>'
+        : '<span class="chip warn">parcial</span>';
       html = "<div><b>" + esc(a.nm) + "</b> (" + esc(a.sg) + ") lidera com <b>" + fmtP(pa) + "%</b> dos válidos, " + fmt.format(a.v - b.v) + " votos (" + fmtP(pa - pb) + " p.p.) à frente de <b>" + esc(b.nm) + "</b>. " + chip + "</div>";
-      var resto = pSec < 100 && !a.st ? faltam() : 0;
-      if (resto > 0) {
-        var precisa = 50 + 50 * (a.v - b.v) / resto;
-        var vira = precisa <= 100
-          ? "Para virar, " + esc(b.nm) + " precisaria de <b>" + fmtP(precisa, 1) + "%</b> deles."
-          : "Nem com todos eles " + esc(b.nm) + " alcançaria " + esc(a.nm) + ".";
-        html += '<div class="aux">Faltam cerca de <b>' + fmtVotos(resto) + "</b> de votos válidos (estimativa). " + vira + "</div>";
-      }
+      if (pSec < 100) html += blocoDecisao(dc, resto);
     } else if (a) {
       html = "<div><b>" + esc(a.nm) + "</b> com " + fmtP(100 * a.v / vv) + "% dos válidos.</div>";
     }
@@ -765,11 +833,14 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
         var col = tab === "pres" ? (colors[a.n] || "var(--c3)") : "var(--c1)";
         var mix = Math.min(62, 18 + (pa - pb) * 1.6);
         if (tab === "gov" && a.st) cls += " done";
+        var trava = decisao(d, 0);
+        trava = trava && trava.mat;
         style += "background:color-mix(in srgb," + col + " " + mix.toFixed(0) + "%, var(--surface));";
         var dec = Math.abs(pa - 50) < 0.5 ? 2 : 1; /* disputa apertada ganha uma casa a mais */
+        if (trava) inner += '<span class="ck" aria-hidden="true">✓</span>';
         inner += '<span class="ld">' + esc(curto(a.nm)) + '</span><span class="lp">' + fmtP(pa, dec) + "%</span>";
         inner += '<span class="sec"><span style="width:' + (100 * d.st / Math.max(1, d.ts)).toFixed(1) + '%"></span></span>';
-        label += ": " + a.nm + " " + fmtP(pa, dec) + "%, " + fmtP(100 * d.st / Math.max(1, d.ts), 1) + "% das seções" + (a.st ? ", " + a.st : "");
+        label += ": " + a.nm + " " + fmtP(pa, dec) + "%, " + fmtP(100 * d.st / Math.max(1, d.ts), 1) + "% das seções" + (trava ? ", decidido matematicamente" : "") + (a.st ? ", " + a.st : "");
       } else if (d) {
         inner += '<span class="ld">0% apurado</span>';
       } else if (tab === "gov" && govSemSegundo(uf)) {
@@ -787,9 +858,10 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
       var s = state.presBR.cands.slice().sort(porVotos);
       lg = (s[0] ? '<span><i style="background:var(--c1)"></i>' + esc(s[0].nm) + " na frente</span>" : "") +
            (s[1] ? '<span><i style="background:var(--c2)"></i>' + esc(s[1].nm) + " na frente</span>" : "") +
-           "<span>cor mais forte = vantagem maior</span>";
+           "<span>cor mais forte = vantagem maior</span>" +
+           '<span><b style="color:var(--ok)">✓</b> não dá mais para virar no estado</span>';
     } else if (tab === "gov") {
-      lg = '<span><i style="background:var(--c1)"></i>cor mais forte = vantagem maior</span><span><i style="border:2px solid var(--ink)"></i>TSE já declarou eleito</span><span>apagado = decidido no 1º turno</span>';
+      lg = '<span><i style="background:var(--c1)"></i>cor mais forte = vantagem maior</span><span><b style="color:var(--ok)">✓</b> decidido matematicamente</span><span><i style="border:2px solid var(--ink)"></i>TSE já declarou eleito</span><span>apagado = decidido no 1º turno</span>';
     }
     $("legend").innerHTML = lg;
   }
@@ -981,7 +1053,27 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     $("codes").textContent = "Eleições " + ELE.pres + " (presidente) e " + ELE.gov + " (governador)" + (state.cfg === "ok" ? ", conferidas no cadastro de eleições do TSE." : ", ainda sem conferência no cadastro de eleições do TSE.");
   }
 
-  function renderAll() { renderTabs(); renderUfSelect(); renderStrip(); renderMain(); renderExt(); renderProj(); renderMap(); renderCurve(); renderStamp(); }
+  /* aviso no topo quando a Presidência fica decidida, em qualquer aba; o título da aba muda junto, para quem deixou
+     o painel em segundo plano, e o celular vibra uma vez se o painel viu a disputa ainda aberta antes */
+  var TITULO = document.title, viuAberta = false, vibrou = false;
+  function renderDecide() {
+    var d = state.presBR;
+    var p = d && d.ts ? 100 * d.st / d.ts : 0;
+    var dc = decisao(d, 0);
+    var feito = !!(dc && (dc.mat || dc.tse));
+    $("decide").hidden = !feito;
+    document.title = feito ? "✓ " + curto(dc.a.nm) + " · " + TITULO : TITULO;
+    if (!feito) { if (dc) viuAberta = true; return; }
+    $("decideT").textContent = dc.tse ? dc.a.nm + " eleito presidente" : dc.a.nm + " está matematicamente eleito";
+    var s = dc.mat && dc.falta
+      ? "Vantagem de <b>" + fmt.format(dc.lead) + "</b> votos sobre " + esc(dc.b.nm) + ", com <b>" + fmtP(p) + "%</b> das seções totalizadas. Faltam só <b>" + fmt.format(dc.falta) + "</b> eleitores aptos nas seções restantes: nem se todos tivessem votado em " + esc(dc.b.nm) + " haveria virada. "
+      : "Vantagem de <b>" + fmt.format(dc.lead) + "</b> votos sobre " + esc(dc.b.nm) + ", com <b>" + fmtP(p) + "%</b> das seções totalizadas. ";
+    s += dc.tse ? "O TSE já gravou o status de eleito no arquivo de resultado." : "Conta deste painel; o TSE ainda não gravou o status de eleito. Só vale o que o TSE proclamar.";
+    $("decideS").innerHTML = s;
+    if (viuAberta && !vibrou && navigator.vibrate) { vibrou = true; try { navigator.vibrate([300, 150, 300]); } catch (e) {} }
+  }
+
+  function renderAll() { renderTabs(); renderUfSelect(); renderDecide(); renderStrip(); renderMain(); renderExt(); renderProj(); renderMap(); renderCurve(); renderStamp(); }
 
   function refresh() {
     if (state.busy) return;
