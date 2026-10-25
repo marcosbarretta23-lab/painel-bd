@@ -221,7 +221,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
       <section class="card chart" aria-live="polite">
         <div>
           <h2>Projeção final · Presidente</h2>
-          <div class="sub">Brasil. Corrige a contagem de agora pelo caminho que a apuração fez no 1º turno, quando os votos de Lula chegaram mais tarde que os de Flávio.</div>
+          <div class="sub">Brasil. Corrige a contagem de agora, estado por estado, com parte do caminho que a apuração de cada estado fez no 1º turno, quando os votos de Lula chegaram mais tarde que os de Flávio. A dose da correção foi calibrada no 2º turno de 2022.</div>
         </div>
         <div class="proj" id="proj"><div class="empty">A projeção começa com os primeiros votos, depois das 17h (horário de Brasília).</div></div>
         <div id="projChart"></div>
@@ -251,8 +251,8 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     Fonte: arquivos públicos de divulgação do TSE em <a href="https://resultados.tse.jus.br/" target="_blank" rel="noopener">resultados.tse.jus.br</a>, lidos direto pelo navegador a cada 30 segundos. <span id="codes"></span>
     O total do Brasil para presidente é a soma das 27 UFs e do exterior, porque o arquivo nacional do TSE atualiza com atraso; quando o arquivo nacional estiver mais adiantado, o painel usa ele.
     Percentuais sobre votos válidos (sem brancos e nulos). "Faltam" e as projeções são estimativas deste painel, não do TSE. Os votos que faltam saem da média de votos válidos por seção já totalizada em cada estado.
-    A projeção "pela curva do 1º turno" soma à contagem de agora a diferença entre o que Flávio tinha no 1º turno com o mesmo % de seções e o que ele terminou tendo, nos votos dos dois. Essa curva foi montada com leituras da apuração de 04/10 (10%, 47,3%, 65%, 67,7%, 92,5% e 99,6% das seções) e com o resultado final do TSE; entre esses pontos o painel liga em linha reta. Ela supõe que o 2º turno seja contado na mesma ordem do 1º.
-    A projeção "estado a estado" supõe que cada estado termine com o percentual que tem agora. Resultado parcial: só vale o que o TSE proclamar.
+    A projeção soma 28 projeções, uma por estado e uma do exterior: em cada uma, a contagem de agora ganha um quarto da diferença entre o que Flávio tinha no 1º turno com o mesmo % das seções daquele lugar e o que terminou tendo lá, nos votos dos dois, e o peso de cada lugar são os votos que ele terá no fim. As curvas do 1º turno foram remontadas com a hora de chegada de cada boletim de urna (dados abertos do TSE): os votos de Flávio e de Lula batem com o resultado final em todas as UFs, e a curva do Brasil reproduz as leituras feitas durante a apuração de 04/10.
+    Por que um quarto: a mesma conta, feita com as curvas do 1º turno de 2022 sobre a apuração do 2º turno de 2022, errou em média 0,48 ponto sem correção, 0,22 com um quarto e 1,04 com a correção inteira, entre 10% e 90% das seções. A ordem de contagem de cada estado se repete só em parte de um turno para o outro. A curva nacional única, que esta página usava antes, teria errado 2,39 pontos em média em 2022. As duas pontas mostram o que dá sem correção e com a correção inteira. Resultado parcial: só vale o que o TSE proclamar.
   </p>
 </div>
 
@@ -273,20 +273,101 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
   var UFS_PRES = UFS.concat(["zz"]);
   /* mapa de quadrados do Brasil: [linha, coluna] */
   var POS = { rr:[1,3], ap:[1,5], am:[2,2], pa:[2,4], ma:[2,5], ce:[2,6], rn:[2,7], ac:[3,1], ro:[3,2], mt:[3,3], to:[3,4], pi:[3,5], pe:[3,6], pb:[3,7], ms:[4,2], go:[4,3], df:[4,4], ba:[4,5], se:[4,6], al:[4,7], sp:[5,3], mg:[5,4], es:[5,5], pr:[6,3], rj:[6,4], sc:[7,3], rs:[8,3], zz:[8,6] };
-  var HIST_KEY = "apuracao2026-t2-pres-hist";
-  /* curva do 1º turno (04/10/2026), presidente, Brasil: % de seções totalizadas e % dos válidos de Flávio (22) e
-     Lula (13) em boletins publicados durante a apuração; o último ponto é o resultado final do TSE.
-     s = % de Flávio nos votos dos dois, que é o que vira o % de válidos no 2º turno. */
-  var T1 = [
-    { p: 10, f: 50.8, l: 41.0 },      /* painel independente de projeção, citado na imprensa */
-    { p: 47.26, f: 50.20, l: 41.63 }, /* arquivo nacional do TSE, 235.931 de 499.248 seções (18h44) */
-    { p: 65, f: 49.58, l: 42.25 },    /* boletim da imprensa */
-    { p: 67.72, f: 49.44, l: 42.40 }, /* 19h12, leitura do painel do 1º turno (soma das 27 UFs e exterior) */
-    { p: 92.48, f: 47.85, l: 44.19 },
-    { p: 99.63, f: 47.11, l: 45.07 },
-    { p: 100, f: 47.03, l: 45.16 }    /* TSE, final */
-  ].map(function (x) { return { p: x.p, s: 100 * x.f / (x.f + x.l) }; });
-  var T1_FIM = T1[T1.length - 1].s;
+  var HIST_KEY = "apuracao2026-t2-pres-hist2"; /* hist2: projeções p0/pu/p1 */
+  /* curva do 1º turno (04/10/2026), presidente: % de Flávio (22) nos votos dele e de Lula (13), que é o que vira o %
+     de válidos no 2º turno, a cada % das seções (T1G), em cada UF e no Brasil. Remontada pela hora de chegada de
+     cada boletim de urna (dados abertos do TSE, bweb_1t de 05/10/2026, DT_BU_RECEBIDO). Os votos dos dois batem com o
+     resultado final do TSE nas 27 UFs e no exterior, e a curva nacional reproduz as leituras feitas durante a
+     apuração (47,26% das seções: 54,67 contra 54,67; 67,72%: 53,82 contra 53,83; 92,48%: 51,98 contra 51,99). */
+  var T1G = [1,2,3,4,5,6,7,8,9,10,12.5,15,17.5,20,22.5,25,27.5,30,32.5,35,37.5,40,42.5,45,47.5,50,52.5,55,57.5,60,62.5,65,67.5,70,72.5,75,77.5,80,82.5,85,87.5,90,92.5,95,96,97,98,99,99.5,100];
+  var T1UF = {
+    ac: { fim: 69.2,
+      g: [62.31,61.17,63.75,65.07,65.18,65.43,65.63,66.15,65.48,65.39,66.18,66.44,66.49,67.07,67.43,67.63,67.69,67.58,67.82,67.96,68.04,68.21,68.41,68.46,68.52,68.62,68.74,68.82,68.91,68.89,69.07,69.19,69.2,69.22,69.28,69.19,69.27,69.31,69.29,69.31,69.38,69.47,69.41,69.44,69.39,69.29,69.28,69.18,69.19,69.2],
+      q: [0.78,1.64,2.56,3.57,4.44,5.29,6.15,7.11,8.03,9.01,11.46,13.93,16.43,18.87,21.3,23.86,26.51,29.09,31.58,34.03,36.45,38.88,41.56,44.08,46.46,48.97,51.52,53.9,56.22,58.67,61.19,63.65,66.32,68.96,71.37,73.77,76.21,78.81,81.33,83.95,86.49,89.19,91.76,94.49,95.65,96.69,97.78,98.85,99.42,100] },
+    al: { fim: 42.5,
+      g: [41.35,40.17,39.66,41.85,42.07,41.95,40.7,40.53,40.69,39.91,40.02,40.09,39.4,39.05,38.92,38.9,38.81,38.92,39.23,39.57,40.05,40.26,40.3,40.61,40.57,40.66,40.48,40.27,40.39,40.42,40.61,40.58,40.69,40.8,41.02,41.32,41.57,41.84,42.05,42.17,42.22,42.38,42.49,42.51,42.52,42.62,42.61,42.55,42.48,42.5],
+      q: [0.84,1.69,2.53,3.49,4.35,5.22,6.04,6.96,7.78,8.64,10.87,13.2,15.43,17.71,19.91,22.24,24.46,26.84,29.38,31.84,34.27,36.78,39.22,41.67,44.15,46.45,48.96,51.57,54.16,56.68,59.31,61.77,64.34,66.98,69.64,72.45,75.17,77.87,80.6,83.28,85.89,88.64,91.48,94.22,95.36,96.6,97.76,98.89,99.43,100] },
+    am: { fim: 48.27,
+      g: [42.73,48.29,50.66,51.32,52.26,53.69,54.22,54.33,54.88,54.96,55.37,55.36,55.08,55.07,54.93,54.7,54.97,54.83,54.75,54.56,54.53,54.39,54.34,54.29,54.05,54.08,53.95,53.8,53.66,53.48,53.23,53.04,52.75,52.52,52.29,51.99,51.77,51.52,51.14,50.82,50.38,49.93,49.63,49.23,49.09,48.93,48.75,48.56,48.43,48.26],
+      q: [0.79,1.66,2.58,3.51,4.44,5.4,6.35,7.33,8.31,9.28,11.66,14.06,16.51,18.96,21.36,23.83,26.41,28.89,31.41,33.98,36.55,39.07,41.72,44.35,46.91,49.48,52.06,54.62,57.14,59.67,62.24,64.84,67.42,69.95,72.36,74.78,77.19,79.65,82.12,84.68,87.11,89.59,92.13,94.78,95.83,96.83,97.88,98.93,99.45,100] },
+    ap: { fim: 49.97,
+      g: [34.09,34.9,33.3,36.46,37.84,39.3,39.69,40.17,41.26,41.96,41.57,42.35,42.9,43.84,44.47,45.26,45.62,45.98,45.99,46.39,46.6,46.78,46.74,46.83,46.97,47.05,47.23,47.31,47.41,47.57,47.82,48.06,48.22,48.54,48.75,49.01,49.04,49.16,49.28,49.36,49.57,49.63,49.73,49.86,49.88,49.9,49.88,49.93,49.95,49.97],
+      q: [0.61,1.4,2.24,2.99,3.74,4.47,5.41,6.26,7.19,8.13,10.18,12.26,14.5,16.61,18.55,20.66,22.78,24.95,27.26,29.41,31.77,34.26,36.61,38.78,40.97,43.64,46.34,48.95,51.6,54.17,57.01,59.63,62.3,65.06,67.82,70.8,73.48,76.26,79.18,81.83,84.74,87.66,90.74,93.82,95.1,96.34,97.59,98.83,99.4,100] },
+    ba: { fim: 30.13,
+      g: [30.22,31.75,31.17,31.37,31.61,31.26,31.73,31.67,31.52,31.45,31.63,31.38,31.63,31.56,31.45,31.74,31.69,31.71,31.78,31.87,31.83,31.71,31.7,31.62,31.55,31.45,31.32,31.24,31.18,31.17,31.19,31.21,31.27,31.22,31.19,31.12,31.04,30.95,30.84,30.76,30.76,30.74,30.64,30.5,30.45,30.38,30.29,30.23,30.2,30.13],
+      q: [0.91,1.86,2.76,3.68,4.56,5.47,6.36,7.27,8.18,9.08,11.39,13.74,16.14,18.5,20.84,23.17,25.52,27.94,30.37,32.74,35.22,37.67,40.14,42.56,45.1,47.6,50.07,52.56,55.11,57.62,60.21,62.89,65.55,68.16,70.82,73.38,76.02,78.7,81.37,84.13,86.78,89.5,92.18,94.81,95.86,96.9,97.95,98.95,99.48,100] },
+    ce: { fim: 33.07,
+      g: [35.25,35.13,35.14,34.8,34.82,35.21,35.44,35.41,36,36.01,35.66,35.44,35.5,35.59,35.62,35.48,35.25,35.25,35.32,35.18,35.16,35.1,35.01,35.01,34.92,34.89,34.88,34.93,34.8,34.76,34.66,34.61,34.57,34.47,34.36,34.37,34.3,34.22,34.11,33.98,33.91,33.83,33.7,33.51,33.43,33.34,33.27,33.17,33.13,33.07],
+      q: [0.91,1.79,2.68,3.59,4.5,5.43,6.39,7.32,8.28,9.25,11.58,13.91,16.31,18.74,21.24,23.64,26.06,28.64,31.15,33.61,36.07,38.63,41.1,43.65,46.22,48.78,51.37,54,56.55,59.2,61.85,64.42,67.01,69.61,72.15,74.83,77.42,80.05,82.6,85.07,87.57,90.13,92.67,95.07,96.05,97.03,98.01,98.98,99.5,100] },
+    df: { fim: 57.38,
+      g: [57.28,56.95,57.44,57.18,57.09,57.07,57.1,57.05,57.09,57.13,57.18,57.14,57.01,56.82,56.97,56.84,56.87,56.92,57.05,57.07,57.06,57.03,56.97,56.91,57,57.07,57.08,57.1,57.16,57.15,57.24,57.19,57.24,57.26,57.28,57.27,57.27,57.27,57.26,57.28,57.28,57.32,57.35,57.29,57.31,57.32,57.31,57.34,57.36,57.38],
+      q: [0.94,1.87,2.8,3.72,4.65,5.61,6.59,7.54,8.49,9.47,11.93,14.32,16.7,19.1,21.46,23.84,26.24,28.73,31.17,33.62,36.08,38.55,41.04,43.41,45.85,48.43,50.94,53.46,56.06,58.62,61.19,63.62,66.17,68.6,71.19,73.79,76.22,78.81,81.4,84.01,86.68,89.27,91.86,94.61,95.6,96.65,97.73,98.87,99.43,100] },
+    es: { fim: 59.2,
+      g: [58.47,61.01,61.3,61.05,61.06,61.17,61.44,60.77,60.97,61.12,60.63,61.08,61.07,61.06,60.98,60.94,60.96,61.05,60.94,60.87,60.75,60.74,60.72,60.79,60.82,60.81,60.9,60.92,60.79,60.73,60.76,60.72,60.64,60.56,60.48,60.42,60.3,60.19,60.14,59.96,60.02,59.83,59.74,59.65,59.53,59.39,59.3,59.29,59.26,59.2],
+      q: [0.85,1.83,2.75,3.62,4.58,5.56,6.51,7.48,8.4,9.36,11.73,14.13,16.59,18.96,21.45,23.87,26.31,28.71,31.06,33.55,35.96,38.43,40.94,43.42,45.98,48.47,50.86,53.33,55.79,58.3,60.76,63.29,65.78,68.34,70.91,73.43,75.94,78.45,80.98,83.57,86.19,88.93,91.69,94.42,95.52,96.65,97.77,98.9,99.44,100] },
+    go: { fim: 63.31,
+      g: [64.21,65.61,66.69,66.87,67.04,66.87,67.18,67.38,67.36,67.31,67.42,67.2,67.05,67.06,66.73,66.57,66.44,66.3,66.21,66.19,66.06,66.01,65.91,65.81,65.73,65.61,65.58,65.46,65.33,65.25,65.17,65.03,64.98,64.92,64.82,64.69,64.52,64.38,64.23,64.1,64.01,63.89,63.76,63.69,63.62,63.58,63.51,63.4,63.36,63.31],
+      q: [0.97,1.98,2.97,3.99,4.98,5.96,6.97,7.91,8.91,9.88,12.32,14.69,17.08,19.47,21.81,24.21,26.55,28.96,31.37,33.88,36.35,38.87,41.42,43.91,46.37,48.87,51.37,53.93,56.43,59.01,61.56,64.08,66.6,69.09,71.67,74.27,76.85,79.38,81.95,84.49,87.12,89.72,92.37,94.97,95.96,96.99,97.95,99,99.52,100] },
+    ma: { fim: 32.56,
+      g: [29.83,31.19,32.25,33.08,33.05,34.01,34.9,35.51,35.89,36.17,36.29,35.97,36,36.09,36.18,35.92,35.65,35.57,35.55,35.26,35.09,35.08,34.98,34.75,34.66,34.61,34.67,34.5,34.22,34.09,34,34.01,34.1,34.06,33.99,33.98,33.94,33.78,33.67,33.57,33.42,33.24,33.12,32.98,32.94,32.86,32.75,32.69,32.64,32.56],
+      q: [0.74,1.56,2.45,3.39,4.3,5.21,6.13,7.09,8.02,8.95,11.26,13.56,15.97,18.35,20.74,23.09,25.5,27.93,30.32,32.68,35.14,37.58,40.09,42.54,45,47.55,50.09,52.57,55.07,57.62,60.22,62.86,65.49,68.07,70.75,73.41,76.07,78.75,81.49,84.21,86.91,89.54,92.17,94.82,95.9,96.95,97.95,98.97,99.49,100] },
+    mg: { fim: 52.68,
+      g: [53.63,53.6,53.62,53.61,53.61,53.75,53.78,53.83,54.01,54.06,54.16,54.06,54.05,53.91,54.05,54.26,54.24,54.22,54.34,54.31,54.29,54.19,54.16,54.1,54.06,54.03,53.97,53.93,53.94,53.92,53.86,53.8,53.78,53.74,53.74,53.73,53.6,53.55,53.51,53.43,53.42,53.33,53.25,53.12,53.06,53.01,52.92,52.83,52.76,52.68],
+      q: [1.09,2.2,3.26,4.36,5.45,6.48,7.54,8.54,9.59,10.63,13.12,15.59,18.04,20.52,22.97,25.44,27.89,30.39,32.87,35.31,37.76,40.19,42.6,45.03,47.51,49.92,52.44,54.9,57.35,59.84,62.32,64.83,67.37,69.86,72.31,74.79,77.3,79.8,82.34,84.89,87.42,89.99,92.52,95,95.99,96.98,97.98,99.04,99.53,100] },
+    ms: { fim: 62.82,
+      g: [60.78,61.35,62.15,63.55,63.8,63.37,63.56,63.33,62.98,62.97,63.35,63.34,63.87,63.95,64.04,64.07,64.51,64.77,64.83,64.88,64.95,64.94,65.02,64.89,64.98,64.95,64.9,64.86,64.92,64.88,64.8,64.62,64.56,64.46,64.55,64.52,64.41,64.35,64.31,64.07,63.93,63.83,63.67,63.49,63.37,63.36,63.32,63.08,62.94,62.82],
+      q: [0.87,1.86,2.84,3.81,4.8,5.76,6.78,7.74,8.69,9.64,12.14,14.58,17.01,19.45,21.84,24.35,26.77,29.29,31.85,34.39,36.77,39.26,41.89,44.42,46.96,49.48,51.9,54.45,56.89,59.4,61.92,64.49,67.05,69.57,72.18,74.75,77.31,79.87,82.41,84.9,87.42,89.93,92.34,94.92,95.93,97.03,98.09,99.1,99.57,100] },
+    mt: { fim: 69.06,
+      g: [57.47,61.37,62.42,63.2,63.6,64.54,64.89,65.36,66.18,66.86,66.84,67.28,67.61,68.38,68.87,68.79,68.92,68.88,68.99,69.23,69.29,69.41,69.34,69.34,69.6,69.51,69.72,69.74,69.79,69.87,69.84,69.82,69.78,69.83,69.84,69.89,69.82,69.85,69.75,69.66,69.61,69.64,69.45,69.32,69.31,69.25,69.24,69.17,69.14,69.06],
+      q: [0.75,1.58,2.46,3.38,4.35,5.31,6.24,7.17,8.13,9.12,11.61,14.11,16.66,19.22,21.84,24.44,26.87,29.38,31.98,34.38,36.9,39.32,41.74,44.12,46.69,49.08,51.59,54.1,56.55,59.13,61.57,64.09,66.61,69.21,71.82,74.45,77.05,79.64,82.07,84.64,87.12,89.77,92.28,94.86,95.92,96.93,97.93,98.94,99.46,100] },
+    pa: { fim: 47.13,
+      g: [42.92,45.34,46.96,47.18,47.34,47.3,47.3,47.4,47.59,47.81,48.47,48.52,48.74,48.91,48.95,49.01,49.12,49.13,49.32,49.43,49.35,49.24,49.29,49.17,49.12,49.06,48.91,48.74,48.81,48.82,48.83,48.73,48.79,48.71,48.77,48.84,48.78,48.77,48.71,48.57,48.49,48.32,48.19,47.92,47.77,47.66,47.52,47.35,47.24,47.13],
+      q: [0.83,1.75,2.69,3.68,4.66,5.66,6.67,7.66,8.66,9.64,12.14,14.68,17.24,19.72,22.23,24.67,27.14,29.54,31.96,34.42,36.8,39.2,41.62,44.03,46.44,48.83,51.33,53.78,56.24,58.72,61.23,63.81,66.34,68.91,71.51,74.06,76.65,79.24,81.79,84.36,87.04,89.62,92.28,94.89,95.94,96.98,97.97,98.98,99.5,100] },
+    pb: { fim: 35.04,
+      g: [23.91,26.82,29.37,30.02,30.48,31.49,31.68,32.54,32.58,32.91,33.21,34.05,34.3,34.46,34.7,35.02,35.32,35.56,35.7,35.72,35.55,35.56,35.69,35.7,35.68,35.67,35.56,35.51,35.5,35.46,35.4,35.33,35.43,35.54,35.63,35.61,35.52,35.49,35.48,35.5,35.46,35.4,35.28,35.19,35.19,35.16,35.12,35.09,35.07,35.04],
+      q: [0.88,1.79,2.73,3.68,4.59,5.56,6.51,7.5,8.4,9.32,11.71,14.14,16.46,18.86,21.28,23.68,26.08,28.47,30.91,33.37,35.82,38.28,40.75,43.27,45.73,48.17,50.63,53.12,55.6,58.03,60.51,63.02,65.66,68.26,70.86,73.48,76.09,78.72,81.4,84.04,86.65,89.27,91.92,94.62,95.69,96.76,97.85,98.95,99.5,100] },
+    pe: { fim: 32.84,
+      g: [32.34,33.61,34.28,34.23,34.48,34.99,34.87,34.68,34.84,34.81,35.14,35.3,35.02,34.98,34.9,34.93,34.84,34.89,34.92,34.82,34.68,34.68,34.51,34.33,34.25,34.22,34.17,34.09,34.13,34.13,34.06,33.96,33.92,33.81,33.78,33.74,33.64,33.58,33.54,33.53,33.45,33.39,33.3,33.2,33.15,33.12,33.09,32.99,32.92,32.84],
+      q: [0.83,1.69,2.59,3.42,4.3,5.22,6.09,6.98,7.85,8.66,10.97,13.19,15.36,17.65,19.9,22.21,24.6,27.02,29.51,31.98,34.47,36.98,39.42,41.94,44.46,47.04,49.63,52.22,54.85,57.52,60.13,62.73,65.4,68.01,70.7,73.34,75.97,78.64,81.28,83.94,86.61,89.33,92,94.69,95.78,96.85,97.94,99,99.49,100] },
+    pi: { fim: 25.34,
+      g: [28.28,28.05,28.6,28.35,28.15,28.27,28.32,28.31,28.4,28.45,28.91,29.19,28.88,28.8,28.83,28.75,28.68,28.49,28.39,28.4,28.17,27.93,27.81,27.72,27.66,27.49,27.4,27.28,27.19,27.06,26.95,26.88,26.77,26.59,26.43,26.27,26.19,26.1,26.04,25.93,25.86,25.79,25.68,25.59,25.54,25.52,25.5,25.42,25.39,25.34],
+      q: [0.91,1.88,2.9,3.88,4.84,5.77,6.72,7.64,8.65,9.57,12.05,14.55,16.98,19.4,21.9,24.33,26.82,29.29,31.83,34.35,36.82,39.24,41.64,44.1,46.51,49.01,51.51,54.1,56.6,59.09,61.65,64.24,66.74,69.26,71.69,74.32,76.88,79.49,82.04,84.6,87.22,89.78,92.32,94.87,95.91,96.93,97.96,98.99,99.5,100] },
+    pr: { fim: 65.76,
+      g: [65.94,65.82,65.55,65.48,65.43,65.25,65.02,65,64.95,65.19,65.23,65.26,65.2,65.3,65.46,65.65,65.64,65.66,65.83,65.83,65.85,65.87,65.92,65.98,65.98,66.11,66.21,66.28,66.25,66.29,66.3,66.28,66.3,66.26,66.2,66.18,66.11,66.05,66.03,65.99,66.03,66.02,66.04,65.97,65.95,65.93,65.9,65.83,65.79,65.76],
+      q: [0.95,1.95,2.96,3.96,5,6.02,7.03,8.03,8.98,10,12.49,15,17.51,19.97,22.46,24.94,27.41,29.88,32.36,34.77,37.21,39.68,42.16,44.67,47.15,49.64,52.14,54.65,57.14,59.71,62.14,64.61,67.16,69.69,72.15,74.66,77.16,79.65,82.15,84.62,87.16,89.7,92.3,94.83,95.84,96.91,97.95,98.96,99.47,100] },
+    rj: { fim: 57.35,
+      g: [59.65,57.12,56.38,56.08,56.14,56.33,56.8,57.06,57.2,57.35,57.38,57.38,57.41,57.57,57.62,57.6,57.43,57.55,57.71,57.68,57.78,57.91,57.96,57.98,58,57.89,57.85,57.89,57.88,57.85,57.83,57.77,57.77,57.71,57.68,57.75,57.64,57.64,57.61,57.64,57.61,57.6,57.47,57.44,57.4,57.39,57.38,57.37,57.38,57.35],
+      q: [0.88,1.78,2.64,3.5,4.38,5.28,6.18,7.1,7.97,8.85,11.05,13.35,15.67,18.01,20.42,22.79,25.16,27.55,29.91,32.26,34.63,37.05,39.57,42.03,44.46,46.98,49.5,52.02,54.57,57.09,59.66,62.28,64.92,67.55,70.14,72.82,75.46,78.16,80.87,83.58,86.24,88.95,91.64,94.39,95.48,96.6,97.72,98.84,99.42,100] },
+    rn: { fim: 36.79,
+      g: [30.62,32.29,33.6,33.95,34.52,35.15,35.14,35.07,34.84,35.15,35.72,35.61,35.46,35.91,35.67,35.59,35.38,35.56,35.53,35.57,35.87,35.97,36.16,36.22,36.24,36.28,36.34,36.29,36.45,36.35,36.45,36.53,36.57,36.59,36.6,36.8,36.81,36.77,36.77,36.76,36.74,36.78,36.78,36.77,36.77,36.75,36.76,36.78,36.8,36.79],
+      q: [0.84,1.69,2.61,3.5,4.42,5.32,6.22,7.13,8.06,9.02,11.45,13.64,15.95,18.29,20.55,22.93,25.2,27.58,30,32.42,34.86,37.18,39.55,42.07,44.51,47,49.53,52.1,54.72,57.33,59.98,62.67,65.32,67.93,70.57,73.28,75.93,78.57,81.23,83.99,86.72,89.27,91.95,94.72,95.79,96.86,97.96,99.02,99.5,100] },
+    ro: { fim: 72.26,
+      g: [63.82,63.92,64.55,64.55,64.84,64.73,64.81,65.05,64.99,65.17,65.37,65.34,65.59,65.64,65.93,66.34,66.65,67.23,67.43,67.41,67.65,68.13,68.36,68.68,69.07,69.39,69.48,69.82,70.04,70.21,70.45,70.66,70.89,71.03,71.22,71.31,71.37,71.51,71.52,71.55,71.68,71.78,71.92,72.02,72.08,72.13,72.18,72.2,72.24,72.26],
+      q: [1.03,2.07,3.13,4.1,5.12,6.08,7.07,8.11,9.16,10.17,12.72,15.24,17.81,20.29,22.82,25.24,27.82,30.34,32.79,35.24,37.67,40.27,42.63,45.06,47.58,50.03,52.42,55.03,57.37,59.84,62.32,64.87,67.37,70.05,72.49,74.79,77.35,80.01,82.44,84.88,87.31,89.75,92.25,94.79,95.79,96.85,97.86,98.93,99.49,100] },
+    rr: { fim: 75.66,
+      g: [50.48,55.2,61.49,64.14,67.17,68.7,66.91,68.59,69.85,71.1,71.25,70.94,71.15,71.69,72.23,72.39,72.68,72.51,73.09,73.4,73.74,74.03,74.24,74.36,74.45,74.75,74.93,75.1,75.35,75.34,75.06,75.01,75.21,75.36,75.41,75.34,75.51,75.54,75.53,75.55,75.62,75.83,75.98,76.04,76.08,76.09,76.13,76.01,75.86,75.66],
+      q: [0.75,1.54,2.51,3.46,4.38,5.35,6.19,7.12,8.06,9.03,11.44,13.71,16.2,18.44,20.77,23.34,25.73,28.32,30.76,33.24,35.71,38.17,40.71,43.25,45.84,48.32,50.66,53.07,55.68,58.11,60.61,63.2,65.71,68.24,70.7,73.27,75.88,78.45,81.27,84.02,86.61,89.31,92.05,94.73,95.8,96.86,97.89,98.8,99.31,100] },
+    rs: { fim: 60.9,
+      g: [68.46,66.78,66.81,66.71,66.19,65.95,65.85,65.58,65.33,65.13,64.68,64.34,64.04,63.77,63.52,63.37,63.3,63.17,63.04,62.77,62.71,62.57,62.44,62.33,62.18,62.09,61.88,61.84,61.63,61.44,61.34,61.23,61.16,61.1,61.02,61,60.98,60.94,60.88,60.79,60.74,60.73,60.72,60.75,60.78,60.82,60.86,60.89,60.93,60.9],
+      q: [1,1.99,2.99,4,4.99,6,6.98,7.97,8.97,9.98,12.44,14.94,17.4,19.85,22.34,24.83,27.34,29.8,32.27,34.79,37.27,39.75,42.28,44.78,47.24,49.74,52.22,54.81,57.26,59.74,62.34,64.94,67.47,70.02,72.58,75.17,77.71,80.18,82.67,85.14,87.7,90.27,92.77,95.33,96.32,97.24,98.2,99.12,99.54,100] },
+    sc: { fim: 72.69,
+      g: [60.45,61.2,60.83,61.67,62.02,62.95,63.35,64.14,64.55,65.32,66.43,67.12,68.23,68.86,68.73,68.3,68.72,69.11,69.48,69.84,70.14,70.4,70.6,70.84,71.04,71.24,71.39,71.54,71.7,71.78,71.89,71.98,72.08,72.16,72.24,72.33,72.42,72.46,72.51,72.5,72.57,72.59,72.63,72.66,72.68,72.69,72.7,72.71,72.72,72.69],
+      q: [0.93,1.92,2.92,3.92,4.91,5.87,6.87,7.86,8.86,9.85,12.21,14.61,17.05,19.42,21.94,24.41,26.83,29.28,31.72,34.17,36.63,39.14,41.63,44.11,46.61,49.14,51.66,54.19,56.68,59.17,61.72,64.24,66.76,69.32,71.86,74.4,76.98,79.54,82.07,84.63,87.21,89.7,92.26,94.8,95.84,96.89,97.93,98.99,99.53,100] },
+    se: { fim: 32.8,
+      g: [37.37,37.19,37.58,38.39,38.06,37.87,37.8,37.96,37.84,37.79,37.57,37.45,37.46,37.24,37.27,37.24,36.89,36.74,36.7,36.48,36.22,35.74,35.39,35.27,35.19,35.03,34.99,34.7,34.6,34.45,34.31,34.36,34.28,34.17,34.03,33.9,33.83,33.84,33.84,33.76,33.68,33.57,33.4,33.18,33.09,32.98,32.99,32.93,32.86,32.8],
+      q: [0.92,1.81,2.71,3.67,4.63,5.54,6.48,7.44,8.36,9.35,11.66,13.98,16.46,18.77,21.19,23.5,25.81,28.16,30.62,32.92,35.37,37.67,40.03,42.42,45,47.4,49.83,52.2,54.64,57.19,59.71,62.29,64.84,67.44,70.04,72.57,75.2,77.94,80.57,83.21,85.93,88.6,91.34,94.04,95.2,96.35,97.54,98.76,99.37,100] },
+    sp: { fim: 57.62,
+      g: [65.78,65.49,65.28,65.22,64.8,64.35,64.12,63.9,63.6,63.18,62.64,62.2,61.85,61.66,61.49,61.2,60.94,60.77,60.5,60.31,60.14,59.91,59.78,59.68,59.51,59.42,59.26,59.07,58.97,58.87,58.79,58.69,58.63,58.57,58.47,58.35,58.24,58.19,58.05,57.99,57.95,57.87,57.8,57.71,57.68,57.65,57.63,57.6,57.61,57.62],
+      q: [0.94,1.91,2.84,3.8,4.75,5.7,6.65,7.62,8.58,9.56,12,14.4,16.83,19.27,21.72,24.17,26.65,29.11,31.57,34.02,36.5,38.99,41.5,44.03,46.56,49.06,51.56,54.1,56.63,59.13,61.63,64.14,66.73,69.25,71.79,74.31,76.86,79.47,82.05,84.64,87.22,89.76,92.3,94.8,95.81,96.85,97.9,98.94,99.48,100] },
+    to: { fim: 53.74,
+      g: [49.19,52.33,51.63,52.05,53.02,53.15,53.17,53.53,53.13,52.41,52.6,52.89,53.24,53.59,52.84,52.22,52.17,52.46,52.6,52.56,52.76,52.86,52.96,52.95,53.14,53.34,53.39,53.45,53.66,53.72,53.99,53.98,53.94,54.12,53.86,53.96,53.8,53.96,54.03,54.01,53.89,53.8,53.73,53.57,53.53,53.56,53.62,53.66,53.69,53.74],
+      q: [0.9,1.86,2.88,3.82,4.79,5.76,6.71,7.74,8.64,9.55,11.96,14.39,16.9,19.42,21.86,24.16,26.6,29.12,31.53,33.9,36.36,38.74,40.98,43.48,45.93,48.55,50.96,53.42,56.04,58.55,60.99,63.59,66.03,68.6,71.03,73.63,76.14,78.85,81.48,84.23,86.85,89.51,92.23,94.7,95.74,96.84,97.84,98.9,99.44,100] },
+    zz: { fim: 47.76,
+      g: [67.92,60.83,52.03,53.07,49.83,48.83,47.14,46.55,46.02,46.84,47.27,46.41,47.78,47.18,46.98,46.53,47.14,45.59,44.46,44.39,44.25,43.89,43.38,42.88,42.69,42.47,42.23,42.04,41.59,42.25,43.29,43.56,44.09,45.2,45.1,45.09,45.59,46.3,47.17,48.03,48.22,48.21,48.12,47.87,47.79,47.76,47.76,47.76,47.76,47.76],
+      q: [0.72,1.53,2.83,3.9,5,6.01,7.43,8.51,9.41,10.41,13.6,16.4,19.14,21.78,24.51,27.04,29.44,32.62,35.53,38.19,40.94,43.58,46.34,49.4,52.11,55.18,58.02,60.84,63.82,66.5,69.19,72.25,74.25,76.67,78.78,80.28,82.3,84.7,87.27,89.64,91.61,93.89,96.29,98.47,99.37,100,100,100,100,100] }
+  };
+  var T1NAC = [52.9,54.03,54.48,54.77,54.94,55.14,55.31,55.34,55.34,55.51,55.65,55.68,55.68,55.63,55.49,55.4,55.34,55.24,55.18,55.14,55.08,54.96,54.83,54.75,54.66,54.57,54.47,54.38,54.24,54.16,54.07,53.96,53.84,53.69,53.53,53.4,53.24,53.08,52.89,52.7,52.47,52.23,51.98,51.73,51.63,51.52,51.39,51.23,51.13,51.01];
+  var T1 = T1G.map(function (p, i) { return { p: p, s: T1NAC[i] }; });
   var N_F = "22", N_L = "13";
   var K_TAB = "apuracao2026-t2-tab", K_UF = "apuracao2026-t2-uf";
 
@@ -451,8 +532,9 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     if (h.some(function (x) { return Math.abs(x.p - p) < 0.005; })) return;
     var c = {};
     d.cands.forEach(function (k) { c[k.n] = +(100 * k.v / d.vv).toFixed(3); });
-    var pc = projCurva(d), pe = projEstado();
-    h.push({ p: +p.toFixed(3), t: d.hg, c: c, pc: pc ? +pc.s.toFixed(3) : null, pe: pe != null ? +pe.toFixed(3) : null });
+    var pu = projUF(K_ORDEM), p0 = projUF(0), p1 = projUF(1);
+    var r3 = function (x) { return x ? +x.s.toFixed(3) : null; };
+    h.push({ p: +p.toFixed(3), t: d.hg, c: c, pu: r3(pu), p0: r3(p0), p1: r3(p1) });
     h.sort(function (a, b) { return a.p - b.p; });
     if (h.length > 600) h = h.slice(h.length - 600);
     memHist = h;
@@ -479,46 +561,51 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     }
     return faltaUm(current(), state.tab === "pres" ? mediaBR() : 0);
   }
-  /* projeção nacional: cada estado termina com o % de agora (estado sem voto apurado usa o % nacional) */
-  function projecao() {
+  /* valor da curva ys (na grade T1G) com p% das seções; antes de 1% fica no ponto de 1% */
+  function interp(ys, p) {
+    if (p <= T1G[0]) return ys[0];
+    for (var i = 1; i < T1G.length; i++) {
+      if (p <= T1G[i]) return ys[i - 1] + (ys[i] - ys[i - 1]) * (p - T1G[i - 1]) / (T1G[i] - T1G[i - 1]);
+    }
+    return ys[ys.length - 1];
+  }
+  var clamp = function (x) { return Math.max(0, Math.min(100, x)); };
+  function candN(d, n) { return d ? d.cands.filter(function (k) { return String(k.n) === n; })[0] : null; }
+  /* Força da correção: fração do desvio de ordem do 1º turno que o painel aplica. Testado no 2º turno de 2022 com as
+     curvas do 1º turno de 2022 (mesma conta, boletins de urna do TSE), o erro médio entre 10% e 90% das seções foi de
+     0,48 ponto sem correção (k = 0), 0,22 com k = 0,25 (pior caso 0,37) e 1,04 com a correção inteira (k = 1). A curva
+     nacional única, que esta página usava antes, errou 2,39 pontos em média. */
+  var K_ORDEM = 0.25;
+  /* projeção pela curva de cada estado: cada UF (e o exterior) termina com a contagem de agora corrigida por k vezes o
+     quanto ela ainda andou no 1º turno a partir do mesmo % das próprias seções (g). O peso de cada UF são os votos que
+     ela terá no fim: os de agora divididos pela fatia que, no 1º turno, já estava contada com esse % de seções (q),
+     porque as primeiras seções a chegar não têm o tamanho médio. UF ainda zerada entra com o final dela no 1º turno
+     mais a variação média das que já têm voto. */
+  function projUF(k) {
     var br = state.presBR;
     if (!br || !br.vv) return null;
-    var m = mediaBR(), tot = {}, all = 0;
+    var m = mediaBR(), F = 0, L = 0, swS = 0, swW = 0, pend = [], ajuste = [];
     for (var i = 0; i < UFS_PRES.length; i++) {
-      var d = state.pres[UFS_PRES[i]];
-      if (!d) return null;
-      var resto = faltaUm(d, m);
-      d.cands.forEach(function (k) {
-        var share = d.vv ? k.v / d.vv : 0;
-        if (!d.vv) { var kb = br.cands.filter(function (x) { return x.n === k.n; })[0]; share = kb ? kb.v / br.vv : 0; }
-        var v = k.v + resto * share;
-        tot[k.n] = (tot[k.n] || 0) + v; all += v;
-      });
+      var uf = UFS_PRES[i], d = state.pres[uf], c = T1UF[uf];
+      if (!d || !c) return null;
+      var f = candN(d, N_F), l = candN(d, N_L);
+      if (!f || !l) return null;
+      var fim = d.vv + faltaUm(d, m);
+      if (d.st && f.v + l.v) {
+        var p = 100 * d.st / d.ts, bruto = 100 * f.v / (f.v + l.v), ref = interp(c.g, p);
+        var q = interp(c.q, p);
+        if (q >= 1 && p < 100) fim = d.vv * 100 / q;
+        var s = clamp(bruto + k * (c.fim - ref));
+        F += fim * s; L += fim * (100 - s);
+        swS += (bruto - ref) * (f.v + l.v); swW += f.v + l.v;
+        /* quanto a correção desta UF move o placar nacional, em votos de Flávio menos os de Lula */
+        ajuste.push({ uf: uf, d: (c.fim - ref), votos: 2 * fim * (s - bruto) / 100 });
+      } else pend.push({ fimT1: c.fim, fim: fim });
     }
-    return all ? { tot: tot, all: all } : null;
-  }
-
-  /* % de Flávio nos votos dos dois no 1º turno, com p% das seções; antes de 10% fica no ponto de 10% */
-  function t1Em(p) {
-    if (p <= T1[0].p) return T1[0].s;
-    for (var i = 1; i < T1.length; i++) {
-      if (p <= T1[i].p) { var a = T1[i - 1], b = T1[i]; return a.s + (b.s - a.s) * (p - a.p) / (b.p - a.p); }
-    }
-    return T1_FIM;
-  }
-  function candN(d, n) { return d ? d.cands.filter(function (k) { return String(k.n) === n; })[0] : null; }
-  function projCurva(d) {
-    var f = candN(d, N_F), l = candN(d, N_L);
-    if (!d || !d.ts || !d.st || !f || !l || !(f.v + l.v)) return null;
-    var p = 100 * d.st / d.ts;
-    var bruto = 100 * f.v / (f.v + l.v);
-    var ref = t1Em(p);
-    return { p: p, bruto: bruto, ref: ref, s: Math.max(0, Math.min(100, bruto + T1_FIM - ref)) };
-  }
-  function projEstado() {
-    var pr = projecao();
-    if (!pr || pr.tot[N_F] == null || pr.tot[N_L] == null || !(pr.tot[N_F] + pr.tot[N_L])) return null;
-    return 100 * pr.tot[N_F] / (pr.tot[N_F] + pr.tot[N_L]);
+    var sw = swW ? swS / swW : 0;
+    pend.forEach(function (x) { var s = clamp(x.fimT1 + sw); F += x.fim * s; L += x.fim * (100 - s); });
+    ajuste.sort(function (a, b) { return Math.abs(b.votos) - Math.abs(a.votos); });
+    return F + L ? { s: 100 * F / (F + L), sw: sw, zerados: pend.length, ajuste: ajuste } : null;
   }
 
   function nationalRankColors() {
@@ -726,29 +813,31 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     var cols = nationalRankColors();
     if (!cols[f.n]) cols[f.n] = cols[l.n] === "var(--c1)" ? "var(--c2)" : "var(--c1)";
     if (!cols[l.n]) cols[l.n] = cols[f.n] === "var(--c1)" ? "var(--c2)" : "var(--c1)";
-    var pc = projCurva(d), pe = projEstado();
-    var nf = esc(curto(f.nm));
+    var pu = projUF(K_ORDEM), p0 = projUF(0), p1 = projUF(1);
     var pSec = 100 * d.st / d.ts;
     var html = "";
 
+    /* veredito pela faixa entre as duas pontas (sem correção e correção inteira), não só pela projeção do meio */
     var v = "";
     if (d.st >= d.ts) v = '<span class="chip mute wrap">apuração encerrada: agora vale a contagem</span>';
-    else if (pc && pe != null) {
-      var a1 = pc.s >= 50, a2 = pe >= 50;
-      var m = 2 * Math.min(Math.abs(pc.s - 50), Math.abs(pe - 50));
-      if (a1 !== a2) v = '<span class="chip warn wrap">as duas projeções apontam vencedores diferentes</span>';
-      else if (m < 1) v = '<span class="chip warn wrap">margem projetada abaixo de 1 ponto: ainda não dá para cravar</span>';
-      else v = '<span class="chip ok wrap">as duas projeções apontam ' + esc(curto((a1 ? f : l).nm)) + "</span>";
+    else if (pu && p0 && p1) {
+      var a0 = p0.s >= 50, a1 = p1.s >= 50, au = pu.s >= 50;
+      if (a0 !== a1) v = '<span class="chip warn wrap">a faixa cruza os 50%: depende de quanto da ordem do 1º turno se repete</span>';
+      else if (2 * Math.abs(pu.s - 50) < 1) v = '<span class="chip warn wrap">margem projetada abaixo de 1 ponto: ainda não dá para cravar</span>';
+      else v = '<span class="chip ok wrap">a faixa inteira aponta ' + esc(curto((au ? f : l).nm)) + "</span>";
     }
     if (v) html += "<div>" + v + "</div>";
 
-    if (pc) {
-      var dif = pc.ref - T1_FIM;
-      var nota = "No 1º turno, com " + fmtP(pc.p, 0) + "% das seções, " + nf + " tinha " + fmtP(pc.ref, 1) + "% dos votos dos dois e terminou com " + fmtP(T1_FIM, 1) + "%. O painel " + (dif >= 0 ? "desconta" : "soma") + " esses " + fmtP(Math.abs(dif), 1) + " pontos da contagem de agora.";
-      if (pc.p < T1[0].p) nota += " Antes de 10% das seções não há boletim do 1º turno: a correção usa a de 10% e balança mais.";
-      html += linhaProj("main", "Pela curva do 1º turno", pc.s, f, l, cols, nota);
+    if (pu) {
+      var nota = "Soma de 28 projeções, uma por estado e uma do exterior. Cada uma corrige a contagem de agora com um quarto do quanto aquele lugar ainda andou no 1º turno a partir do mesmo % das próprias seções: foi a fração que melhor reproduziu o 2º turno de 2022 (erro médio de 0,2 ponto entre 10% e 90% das seções).";
+      var top = pu.ajuste.filter(function (a) { return Math.abs(a.votos) >= 1000; }).slice(0, 3);
+      if (top.length) nota += " Maiores correções agora, no saldo entre os dois: " + top.map(function (a) { return a.uf.toUpperCase() + " " + fmtVotos(Math.abs(a.votos)) + " a favor de " + esc(curto((a.votos >= 0 ? f : l).nm)); }).join("; ") + ".";
+      if (pu.zerados) nota += " " + pu.zerados + (pu.zerados > 1 ? " lugares ainda zerados entram" : " lugar ainda zerado entra") + " com o resultado do 1º turno mais a variação média dos que já têm voto (" + (pu.sw >= 0 ? "+" : "−") + fmtP(Math.abs(pu.sw), 1) + " ponto para " + esc(curto((pu.sw >= 0 ? f : l).nm)) + ").";
+      if (pSec < 5) nota += " Com menos de 5% das seções as correções dos estados pequenos balançam muito.";
+      html += linhaProj("main", "Projeção · curva de cada estado", pu.s, f, l, cols, nota);
     }
-    if (pe != null) html += linhaProj("", "Estado a estado", pe, f, l, cols, "Cada estado termina com o percentual que tem agora.");
+    if (p0) html += linhaProj("", "Ponta 1 · sem correção", p0.s, f, l, cols, "Cada estado termina com o percentual que tem agora. Em 2022 errou 0,5 ponto em média, sempre para o lado de quem largou na frente.");
+    if (p1) html += linhaProj("", "Ponta 2 · correção inteira do 1º turno", p1.s, f, l, cols, "Supõe que cada estado repita por inteiro a ordem de contagem do 1º turno. Em 2022 errou 1,0 ponto em média, sempre para o lado de quem cresceu no fim.");
     html += linhaProj("small", "Contagem agora · " + fmtP(pSec, 1) + "% das seções", 100 * f.v / (f.v + l.v), f, l, cols, "");
     $("proj").innerHTML = html;
     renderProjChart(f, l);
@@ -766,7 +855,8 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     var xmin = Math.max(0, Math.floor(h[0].p / 10) * 10), xmax = 100;
     var ref = T1.filter(function (x) { return x.p >= xmin; });
     var ys = [50];
-    h.forEach(function (pt) { ys.push(bruto(pt)); if (pt.pc != null) ys.push(pt.pc); if (pt.pe != null) ys.push(pt.pe); });
+    h.forEach(function (pt) { ys.push(bruto(pt)); if (pt.p0 != null) ys.push(pt.p0); if (pt.p1 != null) ys.push(pt.p1); if (pt.pu != null) ys.push(pt.pu); });
+    ref = ref.filter(function (x) { return x.p % 10 === 0 || x.p === 5; });
     ref.forEach(function (x) { ys.push(x.s); });
     var ymin = Math.max(0, Math.floor((Math.min.apply(null, ys) - 1) / 2) * 2), ymax = Math.min(100, Math.ceil((Math.max.apply(null, ys) + 1) / 2) * 2);
     var X = function (p) { return L + (W - L - R) * (p - xmin) / (xmax - xmin); };
@@ -783,22 +873,24 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
       var pts = h.filter(function (pt) { return get(pt) != null; });
       return pts.length ? pts.map(function (pt, j) { return (j ? "L" : "M") + X(pt.p).toFixed(1) + " " + Y(get(pt)).toFixed(1); }).join(" ") : "";
     };
-    var dB = path(bruto), dE = path(function (pt) { return pt.pe; }), dC = path(function (pt) { return pt.pc; });
+    var dB = path(bruto), dE = path(function (pt) { return pt.p0; }), dC = path(function (pt) { return pt.p1; }), dU = path(function (pt) { return pt.pu; });
     if (dB) g += '<path d="' + dB + '" fill="none" stroke="var(--c3)" stroke-width="1.5" stroke-linejoin="round"/>';
     if (dE) g += '<path d="' + dE + '" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="5 4" stroke-linejoin="round"/>';
-    if (dC) {
-      g += '<path d="' + dC + '" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
-      var last = h.filter(function (pt) { return pt.pc != null; }).pop();
+    if (dC) g += '<path d="' + dC + '" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="1 3" stroke-linecap="round" stroke-linejoin="round"/>';
+    if (dU) {
+      g += '<path d="' + dU + '" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+      var last = h.filter(function (pt) { return pt.pu != null; }).pop();
       var lx = Math.min(X(last.p) + 8, W - R - 4);
-      g += '<circle cx="' + X(last.p) + '" cy="' + Y(last.pc) + '" r="4.5" fill="var(--ink)" stroke="var(--surface)" stroke-width="2"/>';
-      g += '<text x="' + lx + '" y="' + (Y(last.pc) - 9) + '" text-anchor="' + (lx > W - 120 ? "end" : "start") + '" style="fill:var(--ink);font-weight:500">' + esc(curto(f.nm)) + " " + fmtP(last.pc, 1) + "%</text>";
+      g += '<circle cx="' + X(last.p) + '" cy="' + Y(last.pu) + '" r="4.5" fill="var(--ink)" stroke="var(--surface)" stroke-width="2"/>';
+      g += '<text x="' + lx + '" y="' + (Y(last.pu) - 9) + '" text-anchor="' + (lx > W - 120 ? "end" : "start") + '" style="fill:var(--ink);font-weight:500">' + esc(curto(f.nm)) + " " + fmtP(last.pu, 1) + "%</text>";
     }
     g += '<text x="' + ((L + W - R) / 2) + '" y="' + (H - 2) + '" text-anchor="middle">% de seções totalizadas no Brasil</text>';
     $("projChart").innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Projeção do % de ' + esc(curto(f.nm)) + ' ao longo da apuração">' + g + "</svg>";
     var sw = function (inner) { return '<svg width="20" height="10" aria-hidden="true">' + inner + "</svg>"; };
     $("projLegend").innerHTML =
-      "<span>" + sw('<line x1="1" y1="5" x2="19" y2="5" stroke="var(--ink)" stroke-width="2.5"/>') + "projeção pela curva do 1º turno</span>" +
-      "<span>" + sw('<line x1="1" y1="5" x2="19" y2="5" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="5 4"/>') + "estado a estado</span>" +
+      "<span>" + sw('<line x1="1" y1="5" x2="19" y2="5" stroke="var(--ink)" stroke-width="2.5"/>') + "projeção</span>" +
+      "<span>" + sw('<line x1="1" y1="5" x2="19" y2="5" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="5 4"/>') + "ponta 1 · sem correção</span>" +
+      "<span>" + sw('<line x1="1" y1="5" x2="19" y2="5" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="1 3" stroke-linecap="round"/>') + "ponta 2 · correção inteira</span>" +
       "<span>" + sw('<line x1="1" y1="5" x2="19" y2="5" stroke="var(--c3)" stroke-width="1.5"/>') + "contagem</span>" +
       "<span>" + sw('<circle cx="10" cy="5" r="3.5" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.5"/>') + "contagem do 1º turno, para comparar</span>";
   }
