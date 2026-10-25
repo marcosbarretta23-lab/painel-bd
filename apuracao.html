@@ -251,7 +251,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     Fonte: arquivos públicos de divulgação do TSE em <a href="https://resultados.tse.jus.br/" target="_blank" rel="noopener">resultados.tse.jus.br</a>, lidos direto pelo navegador a cada 30 segundos. <span id="codes"></span>
     O total do Brasil para presidente é a soma das 27 UFs e do exterior, porque o arquivo nacional do TSE atualiza com atraso; quando o arquivo nacional estiver mais adiantado, o painel usa ele.
     Percentuais sobre votos válidos (sem brancos e nulos). "Faltam" e as projeções são estimativas deste painel, não do TSE. Os votos que faltam saem da média de votos válidos por seção já totalizada em cada estado.
-    A projeção "pela curva do 1º turno" soma à contagem de agora a diferença entre o que Flávio tinha no 1º turno com o mesmo % de seções e o que ele terminou tendo, nos votos dos dois. Essa curva foi montada com boletins publicados durante a apuração de 04/10 (10%, 47,3%, 65%, 92,5% e 99,6% das seções) e com o resultado final do TSE; entre esses pontos o painel liga em linha reta. Ela supõe que o 2º turno seja contado na mesma ordem do 1º.
+    A projeção "pela curva do 1º turno" soma à contagem de agora a diferença entre o que Flávio tinha no 1º turno com o mesmo % de seções e o que ele terminou tendo, nos votos dos dois. Essa curva foi montada com leituras da apuração de 04/10 (10%, 47,3%, 65%, 67,7%, 92,5% e 99,6% das seções) e com o resultado final do TSE; entre esses pontos o painel liga em linha reta. Ela supõe que o 2º turno seja contado na mesma ordem do 1º.
     A projeção "estado a estado" supõe que cada estado termine com o percentual que tem agora. Resultado parcial: só vale o que o TSE proclamar.
   </p>
 </div>
@@ -279,8 +279,9 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
      s = % de Flávio nos votos dos dois, que é o que vira o % de válidos no 2º turno. */
   var T1 = [
     { p: 10, f: 50.8, l: 41.0 },      /* painel independente de projeção, citado na imprensa */
-    { p: 47.26, f: 50.20, l: 41.63 }, /* 235.931 de 499.248 seções */
-    { p: 65, f: 49.58, l: 42.25 },    /* 19h25 */
+    { p: 47.26, f: 50.20, l: 41.63 }, /* arquivo nacional do TSE, 235.931 de 499.248 seções (18h44) */
+    { p: 65, f: 49.58, l: 42.25 },    /* boletim da imprensa */
+    { p: 67.72, f: 49.44, l: 42.40 }, /* 19h12, leitura do painel do 1º turno (soma das 27 UFs e exterior) */
     { p: 92.48, f: 47.85, l: 44.19 },
     { p: 99.63, f: 47.11, l: 45.07 },
     { p: 100, f: 47.03, l: 45.16 }    /* TSE, final */
