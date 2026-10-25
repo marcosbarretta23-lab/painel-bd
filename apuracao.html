@@ -114,6 +114,9 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
 .dec.on .dec-k b { color: var(--ok); }
 .decide { border: 2px solid var(--ok); background: color-mix(in srgb, var(--ok) 12%, var(--surface)); border-radius: 10px; padding: 14px 16px; display: grid; gap: 4px; }
 .decide[hidden] { display: none; }
+.parado { font-size: 13px; line-height: 1.45; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--warn); background: color-mix(in srgb, var(--warn) 10%, var(--surface)); text-wrap: pretty; }
+.parado[hidden] { display: none; }
+.parado b { color: var(--warn); }
 .decide .t { font: 700 28px/1.05 var(--f-display); text-transform: uppercase; letter-spacing: .01em; color: var(--ok); text-wrap: balance; }
 .decide .s { font-size: 13px; line-height: 1.5; text-wrap: pretty; }
 .decide .s b { font-family: var(--f-data); font-weight: 500; font-variant-numeric: tabular-nums; }
@@ -231,6 +234,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
       <div class="facts" id="facts"></div>
     </div>
     <div class="track" aria-hidden="true"><span id="pstBar" style="width:0%"></span></div>
+    <div class="parado" id="parado" role="status" hidden></div>
   </section>
 
   <nav class="bar">
@@ -302,6 +306,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     O total do Brasil para presidente é a soma das 27 UFs e do exterior, porque o arquivo nacional do TSE atualiza com atraso; quando o arquivo nacional estiver mais adiantado, o painel usa ele.
     Percentuais sobre votos válidos (sem brancos e nulos). "Faltam" e as projeções são estimativas deste painel, não do TSE. Os votos que faltam saem da média de votos válidos por seção já totalizada em cada estado.
     "Decisão matemática" não é estimativa: compara a vantagem do líder com o número de eleitores aptos nas seções que o TSE ainda não totalizou (campo do próprio arquivo do TSE). Quando a vantagem passa desse número, nem se todos esses eleitores tivessem votado no 2º colocado haveria virada; aí aparece o aviso no topo (Presidência) e o ✓ no mapa (estado a estado). É uma conta mais dura que a da estimativa, por isso dispara mais tarde.
+    A projeção só aparece a partir de 10% das seções do Brasil. Quando o arquivo mais recente do TSE tem mais de 5 minutos com a apuração em andamento, a faixa de cima avisa há quanto tempo não sai parcial nova.
     A projeção soma 28 projeções, uma por estado e uma do exterior: em cada uma, a contagem de agora ganha um quarto da diferença entre o que Flávio tinha no 1º turno com o mesmo % das seções daquele lugar e o que terminou tendo lá, nos votos dos dois, e o peso de cada lugar são os votos que ele terá no fim. As curvas do 1º turno foram remontadas com a hora de chegada de cada boletim de urna (dados abertos do TSE): os votos de Flávio e de Lula batem com o resultado final em todas as UFs, e a curva do Brasil reproduz as leituras feitas durante a apuração de 04/10.
     Por que um quarto: a mesma conta, feita com as curvas do 1º turno de 2022 sobre a apuração do 2º turno de 2022, errou em média 0,48 ponto sem correção, 0,22 com um quarto e 1,04 com a correção inteira, entre 10% e 90% das seções. A ordem de contagem de cada estado se repete só em parte de um turno para o outro. A curva nacional única, que esta página usava antes, teria errado 2,39 pontos em média em 2022. As duas pontas mostram o que dá sem correção e com a correção inteira. Resultado parcial: só vale o que o TSE proclamar.
   </p>
@@ -681,6 +686,10 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
      0,48 ponto sem correção (k = 0), 0,22 com k = 0,25 (pior caso 0,37) e 1,04 com a correção inteira (k = 1). A curva
      nacional única, que esta página usava antes, errou 2,39 pontos em média. */
   var K_ORDEM = 0.25;
+  /* abaixo disto (% das seções do Brasil) a projeção não aparece: as primeiras seções de poucos estados puxam a conta e
+     os estados ainda zerados herdam esse desvio (às 17h06 de 25/10, com 0,25%, ela apontava Lula +11 pontos); a
+     calibração de 2022 foi medida de 10% a 90% */
+  var PROJ_MIN = 10;
   /* projeção pela curva de cada estado: cada UF (e o exterior) termina com a contagem de agora corrigida por k vezes o
      quanto ela ainda andou no 1º turno a partir do mesmo % das próprias seções (g). O peso de cada UF são os votos que
      ela terá no fim: os de agora divididos pela fatia que, no 1º turno, já estava contada com esse % de seções (q),
@@ -921,8 +930,14 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     var cols = nationalRankColors();
     if (!cols[f.n]) cols[f.n] = cols[l.n] === "var(--c1)" ? "var(--c2)" : "var(--c1)";
     if (!cols[l.n]) cols[l.n] = cols[f.n] === "var(--c1)" ? "var(--c2)" : "var(--c1)";
-    var pu = projUF(K_ORDEM), p0 = projUF(0), p1 = projUF(1);
     var pSec = 100 * d.st / d.ts;
+    if (pSec < PROJ_MIN && d.st < d.ts) {
+      $("proj").innerHTML = '<div class="empty">A projeção aparece a partir de ' + PROJ_MIN + "% das seções do Brasil (agora " + fmtP(pSec) + "%). Antes disso, as primeiras seções de poucos estados puxam a conta para um lado e os estados ainda zerados herdam o desvio. A calibração de 2022 foi medida entre 10% e 90% das seções.</div>" +
+        linhaProj("small", "Contagem agora · " + fmtP(pSec, pSec < 1 ? 2 : 1) + "% das seções", 100 * f.v / (f.v + l.v), f, l, cols, "");
+      $("projChart").innerHTML = ""; $("projLegend").innerHTML = "";
+      return;
+    }
+    var pu = projUF(K_ORDEM), p0 = projUF(0), p1 = projUF(1);
     var html = "";
 
     /* veredito pela faixa entre as duas pontas (sem correção e correção inteira), não só pela projeção do meio */
@@ -941,7 +956,6 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
       var top = pu.ajuste.filter(function (a) { return Math.abs(a.votos) >= 1000; }).slice(0, 3);
       if (top.length) nota += " Maiores correções agora, no saldo entre os dois: " + top.map(function (a) { return a.uf.toUpperCase() + " " + fmtVotos(Math.abs(a.votos)) + " a favor de " + esc(curto((a.votos >= 0 ? f : l).nm)); }).join("; ") + ".";
       if (pu.zerados) nota += " " + pu.zerados + (pu.zerados > 1 ? " lugares ainda zerados entram" : " lugar ainda zerado entra") + " com o resultado do 1º turno mais a variação média dos que já têm voto (" + (pu.sw >= 0 ? "+" : "−") + fmtP(Math.abs(pu.sw), 1) + " ponto para " + esc(curto((pu.sw >= 0 ? f : l).nm)) + ").";
-      if (pSec < 5) nota += " Com menos de 5% das seções as correções dos estados pequenos balançam muito.";
       html += linhaProj("main", "Projeção · curva de cada estado", pu.s, f, l, cols, nota);
     }
     if (p0) html += linhaProj("", "Ponta 1 · sem correção", p0.s, f, l, cols, "Cada estado termina com o percentual que tem agora. Em 2022 errou 0,5 ponto em média, sempre para o lado de quem largou na frente.");
@@ -952,7 +966,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
   }
 
   function renderProjChart(f, l) {
-    var h = hist().filter(function (pt) { return pt.c && pt.c[N_F] != null && pt.c[N_L] != null && (pt.c[N_F] + pt.c[N_L]) > 0; });
+    var h = hist().filter(function (pt) { return pt.p >= PROJ_MIN && pt.c && pt.c[N_F] != null && pt.c[N_L] != null && (pt.c[N_F] + pt.c[N_L]) > 0; });
     if (h.length < 2) {
       $("projChart").innerHTML = '<div class="empty">O gráfico da projeção aparece a partir da segunda leitura com avanço na totalização.</div>';
       $("projLegend").innerHTML = "";
@@ -1043,10 +1057,42 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     ["pres", "gov"].forEach(function (t) { $("tab-" + t).setAttribute("aria-selected", String(state.tab === t)); });
   }
 
+  /* TSE sem parcial nova: hora do arquivo mais recente lido (dg + hg, horário de Brasília, UTC-3) contra o relógio deste
+     aparelho. Só conta com a apuração em andamento: antes do primeiro voto os arquivos zerados são velhos de propósito. */
+  var PARADO_MIN = 5;
+  function ultimaPub() {
+    var best = null;
+    var ver = function (d) {
+      if (!d || !d.dg || !d.hg) return;
+      var a = d.dg.split("/"), b = d.hg.split(":");
+      var ms = Date.UTC(+a[2], +a[1] - 1, +a[0], +b[0] + 3, +b[1], +(b[2] || 0));
+      if (isFinite(ms) && (!best || ms > best.ms)) best = { ms: ms, hg: d.hg };
+    };
+    UFS_PRES.forEach(function (u) { ver(state.pres[u]); });
+    ver(state.presOfficial);
+    Object.keys(state.gov).forEach(function (u) { ver(state.gov[u]); });
+    return best;
+  }
+  function tseParado() {
+    var d = state.presBR;
+    if (!d || !d.st || d.st >= d.ts) return null;
+    var u = ultimaPub();
+    if (!u) return null;
+    var min = Math.floor((Date.now() - u.ms) / 60000);
+    return min >= PARADO_MIN ? { min: min, hg: u.hg } : null;
+  }
+  function fmtDur(min) { return min < 60 ? min + " min" : Math.floor(min / 60) + "h" + String(min % 60).padStart(2, "0"); }
+  function renderParado() {
+    var x = tseParado(), el = $("parado");
+    el.hidden = !x;
+    if (!x) return;
+    el.innerHTML = "<b>O TSE não publica parcial nova há " + fmtDur(x.min) + "</b> (a última saiu às " + esc(x.hg.slice(0, 5).replace(":", "h")) + " de Brasília). O painel continua lendo a cada 30 segundos; os números são dessa parcial e voltam a andar sozinhos quando o TSE retomar.";
+  }
+
   function renderStamp() {
-    var live = $("live");
-    live.className = "live" + (state.paused ? " paused" : "") + (state.lastErr && !state.paused ? " err" : "");
-    live.textContent = state.paused ? "pausado" : (state.lastErr ? "instável" : "ao vivo");
+    var live = $("live"), parado = !state.paused && !state.lastErr && tseParado();
+    live.className = "live" + (state.paused ? " paused" : "") + ((state.lastErr || parado) && !state.paused ? " err" : "");
+    live.textContent = state.paused ? "pausado" : (state.lastErr ? "instável" : parado ? "TSE parado" : "ao vivo");
     var t = state.lastOk ? state.lastOk.toLocaleTimeString("pt-BR") : "–";
     $("stamp").textContent = state.busy ? "atualizando…" : "lido às " + t + (state.paused ? "" : " · próxima em " + state.countdown + "s") + (state.lastErr ? " · " + state.lastErr : "");
     $("pause").textContent = state.paused ? "Retomar" : "Pausar";
@@ -1073,7 +1119,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     if (viuAberta && !vibrou && navigator.vibrate) { vibrou = true; try { navigator.vibrate([300, 150, 300]); } catch (e) {} }
   }
 
-  function renderAll() { renderTabs(); renderUfSelect(); renderDecide(); renderStrip(); renderMain(); renderExt(); renderProj(); renderMap(); renderCurve(); renderStamp(); }
+  function renderAll() { renderTabs(); renderUfSelect(); renderDecide(); renderStrip(); renderParado(); renderMain(); renderExt(); renderProj(); renderMap(); renderCurve(); renderStamp(); }
 
   function refresh() {
     if (state.busy) return;
