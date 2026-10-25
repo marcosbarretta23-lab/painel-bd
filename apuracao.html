@@ -369,6 +369,12 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
   var T1NAC = [52.9,54.03,54.48,54.77,54.94,55.14,55.31,55.34,55.34,55.51,55.65,55.68,55.68,55.63,55.49,55.4,55.34,55.24,55.18,55.14,55.08,54.96,54.83,54.75,54.66,54.57,54.47,54.38,54.24,54.16,54.07,53.96,53.84,53.69,53.53,53.4,53.24,53.08,52.89,52.7,52.47,52.23,51.98,51.73,51.63,51.52,51.39,51.23,51.13,51.01];
   var T1 = T1G.map(function (p, i) { return { p: p, s: T1NAC[i] }; });
   var N_F = "22", N_L = "13";
+  /* ordem dos candidatos: mais votos primeiro; empatados (antes do 1º voto) na ordem do 1º turno, Flávio e depois Lula */
+  var ORDEM_T1 = [N_F, N_L];
+  function porVotos(a, b) {
+    var oa = ORDEM_T1.indexOf(String(a.n)), ob = ORDEM_T1.indexOf(String(b.n));
+    return b.v - a.v || (oa < 0 ? 99 : oa) - (ob < 0 ? 99 : ob) || String(a.n).localeCompare(String(b.n));
+  }
   var K_TAB = "apuracao2026-t2-tab", K_UF = "apuracao2026-t2-uf";
 
   var fmt = new Intl.NumberFormat("pt-BR");
@@ -612,7 +618,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     var col = {};
     var d = state.presBR;
     if (!d) return col;
-    var s = d.cands.slice().sort(function (a, b) { return b.v - a.v || String(a.n).localeCompare(String(b.n)); });
+    var s = d.cands.slice().sort(porVotos);
     if (s[0]) col[s[0].n] = "var(--c1)";
     if (s[1]) col[s[1].n] = "var(--c2)";
     return col;
@@ -662,7 +668,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     }
 
     var vv = d.vv || 1;
-    var list = d.cands.slice().sort(function (a, b) { return b.v - a.v || String(a.n).localeCompare(String(b.n)); });
+    var list = d.cands.slice().sort(porVotos);
     var colors = tab === "pres" ? nationalRankColors() : {};
     if (tab !== "pres") { if (list[0]) colors[list[0].n] = "var(--c1)"; if (list[1]) colors[list[1].n] = "var(--c2)"; }
 
@@ -694,7 +700,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
       var chip = k.st ? ' <span class="chip ok">' + esc(k.st) + "</span>" : (k.dvt && k.dvt !== "Válido" ? ' <span class="chip mute">' + esc(k.dvt) + "</span>" : "");
       return '<div class="cand">' +
         '<div class="ph" aria-hidden="true">' + esc(initials(k.nm)) + '<img alt="" loading="lazy" src="' + esc(photo(tab, uf === "br" ? "br" : uf, k.sq)) + '" onerror="this.remove()"></div>' +
-        '<div class="who"><div class="nm">' + (i + 1) + "º · " + esc(k.nm) + chip + '</div><div class="pt">' + esc(k.sg) + " " + esc(k.n) + (k.com && k.com !== k.sg ? " · " + esc(k.com) : "") + "</div></div>" +
+        '<div class="who"><div class="nm">' + (d.vv ? (i + 1) + "º · " : "") + esc(k.nm) + chip + '</div><div class="pt">' + esc(k.sg) + " " + esc(k.n) + (k.com && k.com !== k.sg ? " · " + esc(k.com) : "") + "</div></div>" +
         '<div class="pct"><div class="p">' + fmtP(d.vv ? p : 0) + '%</div><div class="v">' + fmt.format(k.v) + " votos</div></div>" +
         '<div class="bar2"><span style="width:' + Math.min(100, d.vv ? p : 0).toFixed(2) + "%;background:" + col + '"></span><i title="50% dos válidos"></i></div>' +
         "</div>";
@@ -723,7 +729,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
       var cls = "tile" + (state.uf === uf ? " sel" : "");
       var label = UF_NOME[uf];
       if (d && d.vv) {
-        var s = d.cands.slice().sort(function (a, b) { return b.v - a.v; });
+        var s = d.cands.slice().sort(porVotos);
         var a = s[0], b = s[1];
         var pa = 100 * a.v / d.vv, pb = b ? 100 * b.v / d.vv : 0;
         var col = tab === "pres" ? (colors[a.n] || "var(--c3)") : "var(--c1)";
@@ -748,7 +754,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
 
     var lg = "";
     if (tab === "pres" && state.presBR) {
-      var s = state.presBR.cands.slice().sort(function (a, b) { return b.v - a.v || String(a.n).localeCompare(String(b.n)); });
+      var s = state.presBR.cands.slice().sort(porVotos);
       lg = (s[0] ? '<span><i style="background:var(--c1)"></i>' + esc(s[0].nm) + " na frente</span>" : "") +
            (s[1] ? '<span><i style="background:var(--c2)"></i>' + esc(s[1].nm) + " na frente</span>" : "") +
            "<span>cor mais forte = vantagem maior</span>";
@@ -762,7 +768,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     var h = hist();
     var d = state.presBR;
     if (!d || h.length < 2) { $("curve").innerHTML = '<div class="empty">A curva aparece a partir da segunda leitura com avanço na totalização.</div>'; return; }
-    var s = d.cands.slice().sort(function (a, b) { return b.v - a.v; }).slice(0, 2);
+    var s = d.cands.slice().sort(porVotos).slice(0, 2);
     var W = 560, H = 230, L = 40, R = 14, T = 14, B = 30;
     var xmin = Math.max(0, Math.floor(h[0].p / 10) * 10), xmax = 100;
     var ys = [];
