@@ -102,6 +102,24 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
 .chip.ok { color: var(--ok); }
 .chip.warn { color: var(--warn); }
 .chip.mute { color: var(--muted); }
+.chip.wrap { white-space: normal; line-height: 1.3; padding: 4px 8px; }
+
+/* projeção final */
+.proj { display: grid; gap: 14px; }
+.prow { display: grid; gap: 5px; }
+.prow .k { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.prow .k b { color: var(--ink); font-weight: 600; letter-spacing: .03em; }
+.prow .vals { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 12px; font: 700 24px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.prow.main .vals { font-size: 34px; }
+.prow.small .vals { font-size: 18px; }
+.split { position: relative; display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--sunk); }
+.prow.small .split { height: 6px; }
+.split > span { display: block; height: 100%; }
+.split::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; border-left: 2px solid var(--surface); }
+.prow .note { font-size: 12px; line-height: 1.45; color: var(--muted); text-wrap: pretty; }
+.prow.main .vals { display: grid; gap: 4px; }
+.prow.main .vals > div { display: flex; justify-content: space-between; gap: 12px; }
+.chart .legend svg { flex: none; width: 20px; height: 10px; }
 
 /* candidatos */
 .cands { display: grid; gap: 4px; }
@@ -200,6 +218,16 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     </section>
 
     <div style="display:grid;gap:14px;min-width:0">
+      <section class="card chart" aria-live="polite">
+        <div>
+          <h2>Projeção final · Presidente</h2>
+          <div class="sub">Brasil. Corrige a contagem de agora pelo caminho que a apuração fez no 1º turno, quando os votos de Lula chegaram mais tarde que os de Flávio.</div>
+        </div>
+        <div class="proj" id="proj"><div class="empty">A projeção começa com os primeiros votos, depois das 17h (horário de Brasília).</div></div>
+        <div id="projChart"></div>
+        <div class="legend" id="projLegend"></div>
+      </section>
+
       <section class="card">
         <div>
           <h2 id="mapTitle">Quem lidera em cada estado</h2>
@@ -222,7 +250,9 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
   <p class="foot">
     Fonte: arquivos públicos de divulgação do TSE em <a href="https://resultados.tse.jus.br/" target="_blank" rel="noopener">resultados.tse.jus.br</a>, lidos direto pelo navegador a cada 30 segundos. <span id="codes"></span>
     O total do Brasil para presidente é a soma das 27 UFs e do exterior, porque o arquivo nacional do TSE atualiza com atraso; quando o arquivo nacional estiver mais adiantado, o painel usa ele.
-    Percentuais sobre votos válidos (sem brancos e nulos). "Faltam" e "projeção" são estimativas deste painel: os votos que faltam saem da média de votos válidos por seção já totalizada em cada estado, e a projeção supõe que cada estado termine com o percentual de agora. Resultado parcial: só vale o que o TSE proclamar.
+    Percentuais sobre votos válidos (sem brancos e nulos). "Faltam" e as projeções são estimativas deste painel, não do TSE. Os votos que faltam saem da média de votos válidos por seção já totalizada em cada estado.
+    A projeção "pela curva do 1º turno" soma à contagem de agora a diferença entre o que Flávio tinha no 1º turno com o mesmo % de seções e o que ele terminou tendo, nos votos dos dois. Essa curva foi montada com boletins publicados durante a apuração de 04/10 (10%, 47,3%, 65%, 92,5% e 99,6% das seções) e com o resultado final do TSE; entre esses pontos o painel liga em linha reta. Ela supõe que o 2º turno seja contado na mesma ordem do 1º.
+    A projeção "estado a estado" supõe que cada estado termine com o percentual que tem agora. Resultado parcial: só vale o que o TSE proclamar.
   </p>
 </div>
 
@@ -244,6 +274,19 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
   /* mapa de quadrados do Brasil: [linha, coluna] */
   var POS = { rr:[1,3], ap:[1,5], am:[2,2], pa:[2,4], ma:[2,5], ce:[2,6], rn:[2,7], ac:[3,1], ro:[3,2], mt:[3,3], to:[3,4], pi:[3,5], pe:[3,6], pb:[3,7], ms:[4,2], go:[4,3], df:[4,4], ba:[4,5], se:[4,6], al:[4,7], sp:[5,3], mg:[5,4], es:[5,5], pr:[6,3], rj:[6,4], sc:[7,3], rs:[8,3], zz:[8,6] };
   var HIST_KEY = "apuracao2026-t2-pres-hist";
+  /* curva do 1º turno (04/10/2026), presidente, Brasil: % de seções totalizadas e % dos válidos de Flávio (22) e
+     Lula (13) em boletins publicados durante a apuração; o último ponto é o resultado final do TSE.
+     s = % de Flávio nos votos dos dois, que é o que vira o % de válidos no 2º turno. */
+  var T1 = [
+    { p: 10, f: 50.8, l: 41.0 },      /* painel independente de projeção, citado na imprensa */
+    { p: 47.26, f: 50.20, l: 41.63 }, /* 235.931 de 499.248 seções */
+    { p: 65, f: 49.58, l: 42.25 },    /* 19h25 */
+    { p: 92.48, f: 47.85, l: 44.19 },
+    { p: 99.63, f: 47.11, l: 45.07 },
+    { p: 100, f: 47.03, l: 45.16 }    /* TSE, final */
+  ].map(function (x) { return { p: x.p, s: 100 * x.f / (x.f + x.l) }; });
+  var T1_FIM = T1[T1.length - 1].s;
+  var N_F = "22", N_L = "13";
   var K_TAB = "apuracao2026-t2-tab", K_UF = "apuracao2026-t2-uf";
 
   var fmt = new Intl.NumberFormat("pt-BR");
@@ -407,7 +450,8 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     if (h.some(function (x) { return Math.abs(x.p - p) < 0.005; })) return;
     var c = {};
     d.cands.forEach(function (k) { c[k.n] = +(100 * k.v / d.vv).toFixed(3); });
-    h.push({ p: +p.toFixed(3), t: d.hg, c: c });
+    var pc = projCurva(d), pe = projEstado();
+    h.push({ p: +p.toFixed(3), t: d.hg, c: c, pc: pc ? +pc.s.toFixed(3) : null, pe: pe != null ? +pe.toFixed(3) : null });
     h.sort(function (a, b) { return a.p - b.p; });
     if (h.length > 600) h = h.slice(h.length - 600);
     memHist = h;
@@ -451,6 +495,29 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
       });
     }
     return all ? { tot: tot, all: all } : null;
+  }
+
+  /* % de Flávio nos votos dos dois no 1º turno, com p% das seções; antes de 10% fica no ponto de 10% */
+  function t1Em(p) {
+    if (p <= T1[0].p) return T1[0].s;
+    for (var i = 1; i < T1.length; i++) {
+      if (p <= T1[i].p) { var a = T1[i - 1], b = T1[i]; return a.s + (b.s - a.s) * (p - a.p) / (b.p - a.p); }
+    }
+    return T1_FIM;
+  }
+  function candN(d, n) { return d ? d.cands.filter(function (k) { return String(k.n) === n; })[0] : null; }
+  function projCurva(d) {
+    var f = candN(d, N_F), l = candN(d, N_L);
+    if (!d || !d.ts || !d.st || !f || !l || !(f.v + l.v)) return null;
+    var p = 100 * d.st / d.ts;
+    var bruto = 100 * f.v / (f.v + l.v);
+    var ref = t1Em(p);
+    return { p: p, bruto: bruto, ref: ref, s: Math.max(0, Math.min(100, bruto + T1_FIM - ref)) };
+  }
+  function projEstado() {
+    var pr = projecao();
+    if (!pr || pr.tot[N_F] == null || pr.tot[N_L] == null || !(pr.tot[N_F] + pr.tot[N_L])) return null;
+    return 100 * pr.tot[N_F] / (pr.tot[N_F] + pr.tot[N_L]);
   }
 
   function nationalRankColors() {
@@ -527,10 +594,6 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
           ? "Para virar, " + esc(b.nm) + " precisaria de <b>" + fmtP(precisa, 1) + "%</b> deles."
           : "Nem com todos eles " + esc(b.nm) + " alcançaria " + esc(a.nm) + ".";
         html += '<div class="aux">Faltam cerca de <b>' + fmtVotos(resto) + "</b> de votos válidos (estimativa). " + vira + "</div>";
-        if (tab === "pres" && uf === "br") {
-          var pr = projecao();
-          if (pr) html += '<div class="aux">Se cada estado terminar com o % de agora: <b>' + esc(a.nm) + " " + fmtP(100 * pr.tot[a.n] / pr.all, 1) + "%</b> x <b>" + esc(b.nm) + " " + fmtP(100 * pr.tot[b.n] / pr.all, 1) + "%</b>.</div>";
-        }
       }
     } else if (a) {
       html = "<div><b>" + esc(a.nm) + "</b> com " + fmtP(100 * a.v / vv) + "% dos válidos.</div>";
@@ -640,6 +703,105 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     $("curve").innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Evolução do percentual dos dois candidatos conforme a apuração avança">' + g + "</svg>";
   }
 
+  function linhaProj(cls, rotulo, sF, f, l, cols, nota) {
+    var sL = 100 - sF, lider = sF >= sL ? f : l;
+    var vals = cls === "main"
+      ? '<div style="color:' + cols[f.n] + '"><span>' + esc(curto(f.nm)) + "</span><span>" + fmtP(sF, 1) + '%</span></div><div style="color:' + cols[l.n] + '"><span>' + esc(curto(l.nm)) + "</span><span>" + fmtP(sL, 1) + "%</span></div>"
+      : '<span style="color:' + cols[f.n] + '">' + esc(curto(f.nm)) + " " + fmtP(sF, 1) + '%</span><span style="color:' + cols[l.n] + '">' + esc(curto(l.nm)) + " " + fmtP(sL, 1) + "%</span>";
+    return '<div class="prow ' + cls + '">' +
+      '<div class="k"><span>' + rotulo + "</span><b>" + esc(curto(lider.nm)) + " +" + fmtP(Math.abs(sF - sL), 1) + " p.p.</b></div>" +
+      '<div class="vals">' + vals + "</div>" +
+      '<div class="split" aria-hidden="true"><span style="width:' + sF.toFixed(2) + "%;background:" + cols[f.n] + '"></span><span style="flex:1;background:' + cols[l.n] + '"></span></div>' +
+      (nota ? '<div class="note">' + nota + "</div>" : "") +
+      "</div>";
+  }
+
+  function renderProj() {
+    var d = state.presBR;
+    var f = candN(d, N_F), l = candN(d, N_L);
+    var vazio = function (msg) { $("proj").innerHTML = '<div class="empty">' + msg + "</div>"; $("projChart").innerHTML = ""; $("projLegend").innerHTML = ""; };
+    if (!d || !d.st || !d.vv) return vazio("A projeção começa com os primeiros votos, depois das 17h (horário de Brasília).");
+    if (!f || !l) return vazio("A curva do 1º turno é de Flávio (22) contra Lula (13), e estes arquivos trazem outros candidatos. A projeção fica desligada.");
+    var cols = nationalRankColors();
+    if (!cols[f.n]) cols[f.n] = cols[l.n] === "var(--c1)" ? "var(--c2)" : "var(--c1)";
+    if (!cols[l.n]) cols[l.n] = cols[f.n] === "var(--c1)" ? "var(--c2)" : "var(--c1)";
+    var pc = projCurva(d), pe = projEstado();
+    var nf = esc(curto(f.nm));
+    var pSec = 100 * d.st / d.ts;
+    var html = "";
+
+    var v = "";
+    if (d.st >= d.ts) v = '<span class="chip mute wrap">apuração encerrada: agora vale a contagem</span>';
+    else if (pc && pe != null) {
+      var a1 = pc.s >= 50, a2 = pe >= 50;
+      var m = 2 * Math.min(Math.abs(pc.s - 50), Math.abs(pe - 50));
+      if (a1 !== a2) v = '<span class="chip warn wrap">as duas projeções apontam vencedores diferentes</span>';
+      else if (m < 1) v = '<span class="chip warn wrap">margem projetada abaixo de 1 ponto: ainda não dá para cravar</span>';
+      else v = '<span class="chip ok wrap">as duas projeções apontam ' + esc(curto((a1 ? f : l).nm)) + "</span>";
+    }
+    if (v) html += "<div>" + v + "</div>";
+
+    if (pc) {
+      var dif = pc.ref - T1_FIM;
+      var nota = "No 1º turno, com " + fmtP(pc.p, 0) + "% das seções, " + nf + " tinha " + fmtP(pc.ref, 1) + "% dos votos dos dois e terminou com " + fmtP(T1_FIM, 1) + "%. O painel " + (dif >= 0 ? "desconta" : "soma") + " esses " + fmtP(Math.abs(dif), 1) + " pontos da contagem de agora.";
+      if (pc.p < T1[0].p) nota += " Antes de 10% das seções não há boletim do 1º turno: a correção usa a de 10% e balança mais.";
+      html += linhaProj("main", "Pela curva do 1º turno", pc.s, f, l, cols, nota);
+    }
+    if (pe != null) html += linhaProj("", "Estado a estado", pe, f, l, cols, "Cada estado termina com o percentual que tem agora.");
+    html += linhaProj("small", "Contagem agora · " + fmtP(pSec, 1) + "% das seções", 100 * f.v / (f.v + l.v), f, l, cols, "");
+    $("proj").innerHTML = html;
+    renderProjChart(f, l);
+  }
+
+  function renderProjChart(f, l) {
+    var h = hist().filter(function (pt) { return pt.c && pt.c[N_F] != null && pt.c[N_L] != null && (pt.c[N_F] + pt.c[N_L]) > 0; });
+    if (h.length < 2) {
+      $("projChart").innerHTML = '<div class="empty">O gráfico da projeção aparece a partir da segunda leitura com avanço na totalização.</div>';
+      $("projLegend").innerHTML = "";
+      return;
+    }
+    var bruto = function (pt) { return 100 * pt.c[N_F] / (pt.c[N_F] + pt.c[N_L]); };
+    var W = 560, H = 230, L = 40, R = 14, T = 14, B = 30;
+    var xmin = Math.max(0, Math.floor(h[0].p / 10) * 10), xmax = 100;
+    var ref = T1.filter(function (x) { return x.p >= xmin; });
+    var ys = [50];
+    h.forEach(function (pt) { ys.push(bruto(pt)); if (pt.pc != null) ys.push(pt.pc); if (pt.pe != null) ys.push(pt.pe); });
+    ref.forEach(function (x) { ys.push(x.s); });
+    var ymin = Math.max(0, Math.floor((Math.min.apply(null, ys) - 1) / 2) * 2), ymax = Math.min(100, Math.ceil((Math.max.apply(null, ys) + 1) / 2) * 2);
+    var X = function (p) { return L + (W - L - R) * (p - xmin) / (xmax - xmin); };
+    var Y = function (v) { return T + (H - T - B) * (1 - (v - ymin) / Math.max(1, ymax - ymin)); };
+    var g = "";
+    for (var x = xmin; x <= xmax; x += 10) g += '<line class="axis" x1="' + X(x) + '" x2="' + X(x) + '" y1="' + T + '" y2="' + (H - B) + '" stroke-width="1" opacity=".6"/><text x="' + X(x) + '" y="' + (H - B + 16) + '" text-anchor="middle">' + x + "%</text>";
+    var step = (ymax - ymin) > 12 ? 4 : 2;
+    for (var y = ymin; y <= ymax; y += step) g += '<line class="axis" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(y) + '" y2="' + Y(y) + '" stroke-width="1" opacity=".6"/><text x="' + (L - 6) + '" y="' + (Y(y) + 4) + '" text-anchor="end">' + y + "%</text>";
+    g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(50) + '" y2="' + Y(50) + '" stroke="var(--muted)" stroke-dasharray="4 4" stroke-width="1.5"/>';
+    g += '<text x="' + (L + 6) + '" y="' + (Y(50) - 6) + '">acima: ' + esc(curto(f.nm)) + " vence</text>";
+    g += '<text x="' + (L + 6) + '" y="' + (Y(50) + 15) + '">abaixo: ' + esc(curto(l.nm)) + " vence</text>";
+    ref.forEach(function (x) { g += '<circle cx="' + X(x.p).toFixed(1) + '" cy="' + Y(x.s).toFixed(1) + '" r="3.5" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.5"/>'; });
+    var path = function (get) {
+      var pts = h.filter(function (pt) { return get(pt) != null; });
+      return pts.length ? pts.map(function (pt, j) { return (j ? "L" : "M") + X(pt.p).toFixed(1) + " " + Y(get(pt)).toFixed(1); }).join(" ") : "";
+    };
+    var dB = path(bruto), dE = path(function (pt) { return pt.pe; }), dC = path(function (pt) { return pt.pc; });
+    if (dB) g += '<path d="' + dB + '" fill="none" stroke="var(--c3)" stroke-width="1.5" stroke-linejoin="round"/>';
+    if (dE) g += '<path d="' + dE + '" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="5 4" stroke-linejoin="round"/>';
+    if (dC) {
+      g += '<path d="' + dC + '" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+      var last = h.filter(function (pt) { return pt.pc != null; }).pop();
+      var lx = Math.min(X(last.p) + 8, W - R - 4);
+      g += '<circle cx="' + X(last.p) + '" cy="' + Y(last.pc) + '" r="4.5" fill="var(--ink)" stroke="var(--surface)" stroke-width="2"/>';
+      g += '<text x="' + lx + '" y="' + (Y(last.pc) - 9) + '" text-anchor="' + (lx > W - 120 ? "end" : "start") + '" style="fill:var(--ink);font-weight:500">' + esc(curto(f.nm)) + " " + fmtP(last.pc, 1) + "%</text>";
+    }
+    g += '<text x="' + ((L + W - R) / 2) + '" y="' + (H - 2) + '" text-anchor="middle">% de seções totalizadas no Brasil</text>';
+    $("projChart").innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Projeção do % de ' + esc(curto(f.nm)) + ' ao longo da apuração">' + g + "</svg>";
+    var sw = function (inner) { return '<svg width="20" height="10" aria-hidden="true">' + inner + "</svg>"; };
+    $("projLegend").innerHTML =
+      "<span>" + sw('<line x1="1" y1="5" x2="19" y2="5" stroke="var(--ink)" stroke-width="2.5"/>') + "projeção pela curva do 1º turno</span>" +
+      "<span>" + sw('<line x1="1" y1="5" x2="19" y2="5" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="5 4"/>') + "estado a estado</span>" +
+      "<span>" + sw('<line x1="1" y1="5" x2="19" y2="5" stroke="var(--c3)" stroke-width="1.5"/>') + "contagem</span>" +
+      "<span>" + sw('<circle cx="10" cy="5" r="3.5" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.5"/>') + "contagem do 1º turno, para comparar</span>";
+  }
+
   function renderUfSelect() {
     var opts;
     if (state.tab === "pres") {
@@ -664,7 +826,7 @@ button:focus-visible, select:focus-visible, .tile:focus-visible { outline: 2px s
     $("codes").textContent = "Eleições " + ELE.pres + " (presidente) e " + ELE.gov + " (governador)" + (state.cfg === "ok" ? ", conferidas no cadastro de eleições do TSE." : ", ainda sem conferência no cadastro de eleições do TSE.");
   }
 
-  function renderAll() { renderTabs(); renderUfSelect(); renderStrip(); renderMain(); renderMap(); renderCurve(); renderStamp(); }
+  function renderAll() { renderTabs(); renderUfSelect(); renderStrip(); renderMain(); renderProj(); renderMap(); renderCurve(); renderStamp(); }
 
   function refresh() {
     if (state.busy) return;
